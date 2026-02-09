@@ -1,0 +1,90 @@
+{
+  "colorScheme": "light",
+  "fonts": [
+    {
+      "family": "Suisse Intl Medium",
+      "role": "heading"
+    },
+    {
+      "family": "Suisse Intl Regular",
+      "role": "body"
+    },
+    {
+      "family": "Suisse Intl Mono Regular",
+      "role": "monospace"
+    },
+    {
+      "family": "Inter",
+      "role": "unknown"
+    }
+  ],
+  "colors": {
+    "primary": "#0E1620",
+    "accent": "#0000EE",
+    "background": "#FFFFFF",
+    "textPrimary": "#9E9FA6",
+    "link": "#0000EE"
+  },
+  "typography": {
+    "fontFamilies": {
+      "primary": "Suisse Intl Regular",
+      "heading": "Suisse Intl Medium"
+    },
+    "fontStacks": {
+      "heading": [
+        "Suisse Intl Medium",
+        "sans-serif"
+      ],
+      "body": [
+        "sans-serif"
+      ],
+      "paragraph": [
+        "Suisse Intl Medium",
+        "sans-serif"
+      ]
+    },
+    "fontSizes": {
+      "h1": "120px",
+      "h2": "64px",
+      "body": "13px"
+    }
+  },
+  "spacing": {
+    "baseUnit": 4,
+    "borderRadius": "16px"
+  },
+  "components": {},
+  "images": {
+    "logo": null,
+    "favicon": "File saved at: attached_assets/favicon.svg",
+    "ogImage": "File saved at: attached_assets/ogImage.png"
+  },
+  "__framework_hints": [
+    "Framer 874d64d"
+  ],
+  "personality": {
+    "tone": "professional",
+    "energy": "medium",
+    "targetAudience": "design professionals"
+  },
+  "designSystem": {
+    "framework": "custom",
+    "componentLibrary": ""
+  },
+  "confidence": {
+    "buttons": 0.8,
+    "colors": 0.9,
+    "overall": 0.8500000000000001
+  },
+  "__llm_metadata": {
+    "logoSelection": {
+      "llmCalled": false,
+      "llmSucceeded": false,
+      "finalSource": "none"
+    },
+    "buttonClassification": {
+      "llmCalled": false,
+      "llmSucceeded": true
+    }
+  }
+}
