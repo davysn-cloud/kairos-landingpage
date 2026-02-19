@@ -1,94 +1,194 @@
+import { useRef, useEffect } from "react";
 import { Navbar, Footer } from "@/components/layout";
-import { Hero, ContentBlock } from "@/components/home-sections";
+import { Hero, PurposeBlock } from "@/components/home-sections";
+import { ManifestoSection } from "@/components/manifesto-section";
+import { ServicesSection } from "@/components/services-section";
+import { ValuesSection } from "@/components/values-section";
 import { motion } from "framer-motion";
+import gsap from "gsap";
+import ScrollTrigger from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(ScrollTrigger);
+
+const EASE: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
 
 export default function Home() {
+  const sobreHeadingRef = useRef<HTMLHeadingElement>(null);
+  const sobreSubRef = useRef<HTMLParagraphElement>(null);
+  const sobreSectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const heading = sobreHeadingRef.current;
+    const sub = sobreSubRef.current;
+    const section = sobreSectionRef.current;
+    if (!heading || !sub || !section) return;
+
+    // Parallax: heading moves up at 60% scroll speed
+    const st1 = gsap.to(heading, {
+      y: -60,
+      ease: "none",
+      scrollTrigger: {
+        trigger: section,
+        start: "top bottom",
+        end: "bottom top",
+        scrub: 0.6,
+      },
+    });
+
+    // Parallax: sub moves up at 40% scroll speed (slower = deeper layer)
+    const st2 = gsap.to(sub, {
+      y: -35,
+      ease: "none",
+      scrollTrigger: {
+        trigger: section,
+        start: "top bottom",
+        end: "bottom top",
+        scrub: 0.6,
+      },
+    });
+
+    return () => {
+      st1.kill();
+      st2.kill();
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-background font-sans">
       <Navbar />
-      
+
       <main>
         <Hero />
-        
-        {/* Intro Text */}
-        <section className="py-32 bg-white">
-          <div className="container mx-auto px-6">
-             <motion.div 
-               initial={{ opacity: 0, y: 30 }}
-               whileInView={{ opacity: 1, y: 0 }}
-               viewport={{ once: true }}
-               transition={{ duration: 0.8 }}
-               className="max-w-4xl"
-             >
-               <h3 className="text-3xl md:text-5xl font-display font-medium leading-tight mb-8">
-                 We believe time is not to be spent, but to be savored. 
-                 <span className="text-muted-foreground"> Kairos builds aircraft that return the most precious resource to you. Not just moving you from A to B, but elevating the journey between.</span>
-               </h3>
-             </motion.div>
+
+        {/* Intro / Sobre — Swiss Style with GSAP parallax */}
+        <section ref={sobreSectionRef} id="sobre" className="section-swiss bg-background parallax-container">
+          <div className="container mx-auto px-6 md:px-12">
+            <div className="max-w-5xl">
+              {/* Label slides in from left */}
+              <div className="overflow-hidden mb-10">
+                <motion.span
+                  initial={{ x: -20, opacity: 0 }}
+                  whileInView={{ x: 0, opacity: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6, ease: EASE }}
+                  className="text-primary font-mono text-xs uppercase tracking-[0.3em] block"
+                >
+                  Sobre a Kairós
+                </motion.span>
+              </div>
+
+              {/* Swiss Style giant heading — GSAP parallax */}
+              <div className="overflow-hidden mb-6">
+                <motion.h3
+                  ref={sobreHeadingRef}
+                  initial={{ y: 60, opacity: 0 }}
+                  whileInView={{ y: 0, opacity: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 1.1, delay: 0.1, ease: EASE }}
+                  className="swiss-title gsap-parallax font-display font-bold text-[hsl(35,25%,30%)]"
+                >
+                  Uma casa criativa
+                  <br />
+                  <span className="italic text-[hsl(35,20%,45%)]">dedicada ao Reino.</span>
+                </motion.h3>
+              </div>
+
+              {/* Body — also parallaxed, slower */}
+              <div className="overflow-hidden max-w-3xl">
+                <motion.p
+                  ref={sobreSubRef}
+                  initial={{ y: 40, opacity: 0 }}
+                  whileInView={{ y: 0, opacity: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 1.0, delay: 0.3, ease: EASE }}
+                  className="text-xl md:text-2xl font-display font-medium leading-relaxed text-muted-foreground gsap-parallax"
+                >
+                  Unimos moda, editorial, produção cultural, audiovisual e
+                  branding em um mesmo movimento: dar forma ao que o céu
+                  comunica.
+                </motion.p>
+              </div>
+            </div>
           </div>
         </section>
 
-        <ContentBlock 
-          subtitle="The Experience"
-          title="Head in the clouds"
-          description="From the moment you step on board, the city noise fades away. Our cabin is designed for tranquility, offering panoramic views and a serene environment that feels less like a commute and more like an exhale."
-          image="/images/lifestyle-flight.png"
-        />
+        {/* Missão / Visão — asymmetric entry */}
+        <section className="py-28 bg-muted/30">
+          <div className="container mx-auto px-6 md:px-12">
+            <div className="relative grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-32">
+              {/* Missão — enters from left */}
+              <motion.div
+                initial={{ x: -30, opacity: 0 }}
+                whileInView={{ x: 0, opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.9, ease: EASE }}
+              >
+                <div className="overflow-hidden mb-6">
+                  <motion.span
+                    initial={{ y: 16, opacity: 0 }}
+                    whileInView={{ y: 0, opacity: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.5, delay: 0.15, ease: EASE }}
+                    className="text-[10px] font-mono uppercase tracking-[0.3em] text-primary block"
+                  >
+                    Missão
+                  </motion.span>
+                </div>
+                <p className="text-xl md:text-2xl font-display leading-relaxed">
+                  Dar forma ao que o céu comunica, transformando fé em expressão
+                  cultural por meio de marcas, livros, artistas, produtos,
+                  roupas e projetos audiovisuais que ecoam a Cultura do Reino.
+                </p>
+              </motion.div>
 
-        <ContentBlock 
-          subtitle="Engineering"
-          title="Aerodynamics in harmony"
-          description="Silence is the new sound of speed. Our distributed electric propulsion system is engineered to be whisper-quiet, blending seamlessly into the urban soundscape while delivering uncompromising performance."
-          image="/images/aero-detail.png"
-          reverse={true}
-        />
-        
-        {/* Full width visual */}
-        <section className="relative py-32 bg-foreground text-white overflow-hidden">
-           <div className="absolute inset-0 opacity-40">
-              <img src="/images/city-aerial.png" className="w-full h-full object-cover" alt="City Aerial" />
-           </div>
-           <div className="container mx-auto px-6 relative z-10 text-center">
-              <h2 className="text-5xl md:text-7xl font-display font-medium mb-8">The city, unlocked.</h2>
-              <p className="text-xl md:text-2xl text-white/80 max-w-2xl mx-auto mb-12">
-                Reimagining urban infrastructure to bring flight closer to your doorstep. A network of skyports that connects communities.
-              </p>
-           </div>
-        </section>
-        
-        {/* Bento Grid Gallery */}
-        <section className="py-32 bg-background">
-          <div className="container mx-auto px-6">
-             <div className="mb-16">
-               <span className="text-primary font-mono text-sm uppercase tracking-widest mb-4 block">Gallery</span>
-               <h2 className="text-4xl font-display font-medium">Visualizing the future</h2>
-             </div>
-             
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 auto-rows-[400px]">
-                <div className="md:col-span-2 row-span-1 rounded-2xl overflow-hidden relative group">
-                   <img src="/images/hero-aircraft.png" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="Aircraft" />
-                   <div className="absolute bottom-6 left-6 text-white font-medium text-lg">Flight 01</div>
+              {/* Vertical divider — grows top to bottom */}
+              <motion.div
+                initial={{ scaleY: 0 }}
+                whileInView={{ scaleY: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8, delay: 0.2, ease: EASE }}
+                style={{ originY: 0 }}
+                className="hidden md:block absolute left-1/2 top-0 bottom-0 w-px bg-border"
+              />
+
+              {/* Visão — enters from right */}
+              <motion.div
+                initial={{ x: 30, opacity: 0 }}
+                whileInView={{ x: 0, opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.9, delay: 0.15, ease: EASE }}
+              >
+                <div className="overflow-hidden mb-6">
+                  <motion.span
+                    initial={{ y: 16, opacity: 0 }}
+                    whileInView={{ y: 0, opacity: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.5, delay: 0.3, ease: EASE }}
+                    className="text-[10px] font-mono uppercase tracking-[0.3em] text-primary block"
+                  >
+                    Visão
+                  </motion.span>
                 </div>
-                <div className="md:col-span-1 row-span-1 rounded-2xl overflow-hidden bg-muted relative group">
-                    <div className="absolute inset-0 flex items-center justify-center bg-secondary/10 group-hover:bg-secondary/20 transition-colors">
-                       <span className="text-secondary font-display text-9xl font-bold opacity-20 group-hover:opacity-40 transition-opacity">01</span>
-                    </div>
-                    <div className="absolute bottom-6 left-6 text-foreground font-medium text-lg">The Concept</div>
-                </div>
-                <div className="md:col-span-1 row-span-1 rounded-2xl overflow-hidden relative group">
-                   <img src="/images/aero-detail.png" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="Detail" />
-                   <div className="absolute bottom-6 left-6 text-white font-medium text-lg">Materials</div>
-                </div>
-                 <div className="md:col-span-2 row-span-1 rounded-2xl overflow-hidden relative group">
-                   <img src="/images/lifestyle-flight.png" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="Lifestyle" />
-                   <div className="absolute bottom-6 left-6 text-white font-medium text-lg">Human Centric</div>
-                </div>
-             </div>
+                <p className="text-xl md:text-2xl font-display leading-relaxed">
+                  Ser a principal referência criativa do mercado cristão,
+                  influenciando a cultura através de beleza, excelência e
+                  propósito; consolidando artistas, autores e empreendedores que
+                  desejam manifestar o Reino através da arte.
+                </p>
+              </motion.div>
+            </div>
           </div>
         </section>
 
+        <PurposeBlock />
+
+        <ServicesSection />
+
+        <ManifestoSection />
+
+        <ValuesSection />
       </main>
-      
+
       <Footer />
     </div>
   );

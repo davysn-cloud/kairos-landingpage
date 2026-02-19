@@ -1,180 +1,499 @@
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect } from "react";
-import { Copy, Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Copy, Check, Menu, X } from "lucide-react";
+
+interface PillState {
+  left: number;
+  width: number;
+  visible: boolean;
+}
+
+const NAV_LINKS = [
+  { label: "Sobre", id: "sobre" },
+  { label: "Serviços", id: "servicos" },
+  { label: "Manifesto", id: "manifesto" },
+  { label: "Valores", id: "valores" },
+];
 
 export function Navbar() {
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [pill, setPill] = useState<PillState>({ left: 0, width: 0, visible: false });
+
+  const navInnerRef = useRef<HTMLDivElement>(null);
+  const btnRefs = useRef<Record<string, HTMLButtonElement | HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 60);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Close drawer on resize to desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) setMobileOpen(false);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Prevent body scroll when drawer is open
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileOpen]);
 
   const copyEmail = () => {
-    navigator.clipboard.writeText("HELLO@KAIROS.COM");
+    navigator.clipboard.writeText("CONTATO@KAIROS.COM");
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const scrollTo = (id: string) => {
+    setMobileOpen(false);
+    setTimeout(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    }, 300);
+  };
+
+  const movePillTo = useCallback((key: string) => {
+    const container = navInnerRef.current;
+    const btn = btnRefs.current[key];
+    if (!container || !btn) return;
+    const cRect = container.getBoundingClientRect();
+    const bRect = btn.getBoundingClientRect();
+    setPill({
+      left: bRect.left - cRect.left,
+      width: bRect.width,
+      visible: true,
+    });
+  }, []);
+
+  const hidePill = useCallback(() => {
+    setPill((p) => ({ ...p, visible: false }));
+    setActiveTab(null);
+  }, []);
+
+  const handleEnter = (key: string) => {
+    setActiveTab(key);
+    movePillTo(key);
+  };
+
+  const LogoSvg = () => (
+    <svg
+      width="72"
+      height="24"
+      viewBox="0 0 72 24"
+      fill="none"
+      className="overflow-visible"
+      aria-label="Kairós"
+    >
+      <motion.text
+        x="0"
+        y="19"
+        fontFamily="'Playfair Display', serif"
+        fontSize="20"
+        fontWeight="700"
+        fontStyle="italic"
+        fill="white"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.01, delay: 0.4 }}
+      >
+        KAIRÓS
+      </motion.text>
+      <motion.line
+        x1="0" y1="22" x2="72" y2="22"
+        stroke="hsl(38 70% 45%)"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        initial={{ pathLength: 0, opacity: 0 }}
+        animate={{ pathLength: 1, opacity: 1 }}
+        transition={{ duration: 1.2, delay: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
+      />
+    </svg>
+  );
+
   return (
-    <nav className="fixed top-8 left-0 right-0 z-50 flex justify-center">
-      <div className="flex items-center gap-2 p-1.5 bg-black/20 backdrop-blur-xl border border-white/10 rounded-full">
-        {/* Logo */}
-        <Link href="/">
-          <div className="w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 transition-colors rounded-full cursor-pointer">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-white">
-              <path d="M2 12C2 12 5 5 12 5C19 5 22 12 22 12C22 12 19 19 12 19C5 19 2 12 2 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" />
-            </svg>
-          </div>
-        </Link>
-
-        {/* About Tab */}
-        <div 
-          className="relative"
-          onMouseEnter={() => setActiveTab('about')}
-          onMouseLeave={() => setActiveTab(null)}
+    <>
+      {/* ── DESKTOP NAV (md+) ── */}
+      <nav className="fixed top-6 left-0 right-0 z-50 hidden md:flex justify-center px-4">
+        <motion.div
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          ref={navInnerRef}
+          onMouseLeave={hidePill}
+          className={`relative flex items-center gap-1 p-1.5 backdrop-blur-xl border rounded-full transition-all duration-500 ${
+            scrolled
+              ? "bg-black/30 border-white/10 shadow-2xl"
+              : "bg-black/20 border-white/[0.06]"
+          }`}
         >
-          <button className={`px-6 py-2.5 text-sm font-medium transition-colors rounded-full ${activeTab === 'about' ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white'}`}>
-            About
-          </button>
-          <AnimatePresence>
-            {activeTab === 'about' && (
-              <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                className="absolute top-full left-0 mt-4 w-[320px] p-6 bg-black/40 backdrop-blur-2xl border border-white/10 rounded-[2rem] text-white shadow-2xl"
-              >
-                <div className="flex justify-between items-start mb-6">
-                  <span className="text-xs font-bold uppercase tracking-widest opacity-50">About</span>
-                  <Link href="/site"><span className="text-[10px] font-bold uppercase tracking-tighter hover:opacity-70 cursor-pointer">Visit Site</span></Link>
-                </div>
-                <p className="text-sm leading-relaxed mb-4 font-medium">
-                  We believe brands are not to be reasoned with. They are hearts to be won. Brands should be felt, remembered and loved — irrationally so.
-                </p>
-                <p className="text-xs leading-relaxed opacity-60">
-                  In the face of changing markets and technology, Kairos builds experiences that remain relevant and differentiated.
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+          {/* Morphing pill background */}
+          <div
+            aria-hidden
+            className="absolute top-1.5 bottom-1.5 rounded-full bg-white/15 pointer-events-none"
+            style={{
+              left: pill.left,
+              width: pill.width,
+              opacity: pill.visible ? 1 : 0,
+              transition:
+                "left 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94), width 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.2s ease",
+            }}
+          />
 
-        {/* Work with us Tab */}
-        <div 
-          className="relative"
-          onMouseEnter={() => setActiveTab('work')}
-          onMouseLeave={() => setActiveTab(null)}
-        >
-          <button className={`px-6 py-2.5 text-sm font-medium transition-colors rounded-full ${activeTab === 'work' ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white'}`}>
-            Work with us
-          </button>
-          <AnimatePresence>
-            {activeTab === 'work' && (
-              <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                className="absolute top-full left-1/2 -translate-x-1/2 mt-4 w-[320px] p-6 bg-black/40 backdrop-blur-2xl border border-white/10 rounded-[2rem] text-white shadow-2xl"
-              >
-                <div className="mb-4">
-                  <span className="text-xs font-bold uppercase tracking-widest opacity-50 block mb-1">Work with us</span>
-                  <p className="text-sm font-medium">Let's make some magic.</p>
-                </div>
-                <div className="flex items-center justify-between p-1 bg-white/10 rounded-full pl-4">
-                  <span className="text-[10px] font-bold tracking-widest opacity-80">HELLO@KAIROS.COM</span>
-                  <button 
-                    onClick={copyEmail}
-                    className="flex items-center justify-center w-10 h-10 bg-white/20 hover:bg-white/30 transition-colors rounded-full"
-                  >
-                    {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Dots Menu */}
-        <div 
-          className="relative"
-          onMouseEnter={() => setActiveTab('menu')}
-          onMouseLeave={() => setActiveTab(null)}
-        >
-          <button className={`px-4 py-2.5 transition-colors rounded-full ${activeTab === 'menu' ? 'bg-white/20' : 'hover:bg-white/10'}`}>
-            <div className="flex gap-1">
-              {[1,2,3,4,5,6].map(i => <div key={i} className="w-1 h-1 bg-white rounded-full opacity-60" />)}
+          {/* Logo */}
+          <Link href="/">
+            <div
+              ref={(el) => { btnRefs.current["logo"] = el; }}
+              onMouseEnter={() => handleEnter("logo")}
+              className="px-5 py-2.5 flex items-center cursor-pointer relative z-10"
+            >
+              <LogoSvg />
             </div>
+          </Link>
+
+          <div className="w-px h-5 bg-white/10 relative z-10" />
+
+          {/* Sobre */}
+          <div className="relative" onMouseEnter={() => handleEnter("about")}>
+            <button
+              ref={(el) => { btnRefs.current["about"] = el; }}
+              onClick={() => scrollTo("sobre")}
+              className="px-5 py-2.5 text-sm font-medium text-white/80 hover:text-white transition-colors rounded-full relative z-10"
+            >
+              Sobre
+            </button>
+            <AnimatePresence>
+              {activeTab === "about" && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute top-full left-0 mt-4 w-[320px] p-6 bg-black/60 backdrop-blur-2xl border border-white/10 rounded-[2rem] text-white shadow-2xl"
+                >
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-40 block mb-4">Missão</span>
+                  <p className="text-sm leading-relaxed font-medium mb-3">
+                    Dar forma ao que o céu comunica, transformando fé em expressão cultural por meio de marcas, livros, artistas e projetos audiovisuais.
+                  </p>
+                  <p className="text-xs leading-relaxed opacity-50">
+                    Uma casa criativa da Indústria Criativa cristã dedicada a transformar propósito em expressão cultural.
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Serviços */}
+          <button
+            ref={(el) => { btnRefs.current["servicos"] = el; }}
+            onMouseEnter={() => handleEnter("servicos")}
+            onClick={() => scrollTo("servicos")}
+            className="px-5 py-2.5 text-sm font-medium text-white/80 hover:text-white transition-colors rounded-full relative z-10"
+          >
+            Serviços
           </button>
-          <AnimatePresence>
-            {activeTab === 'menu' && (
-              <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                className="absolute top-full right-0 mt-4 min-w-[160px] p-2 bg-black/40 backdrop-blur-2xl border border-white/10 rounded-3xl text-white shadow-2xl flex flex-col gap-1"
-              >
-                {['Visual System', 'Photography', 'Illustration', '3D', 'Website', 'Credits'].map(item => (
-                  <button key={item} className="w-full text-left px-4 py-2 text-xs font-bold uppercase tracking-widest hover:bg-white/10 rounded-full transition-colors opacity-70 hover:opacity-100">
-                    {item}
-                  </button>
+
+          {/* Manifesto */}
+          <button
+            ref={(el) => { btnRefs.current["manifesto"] = el; }}
+            onMouseEnter={() => handleEnter("manifesto")}
+            onClick={() => scrollTo("manifesto")}
+            className="px-5 py-2.5 text-sm font-medium text-white/80 hover:text-white transition-colors rounded-full relative z-10"
+          >
+            Manifesto
+          </button>
+
+          {/* Contato */}
+          <div className="relative" onMouseEnter={() => handleEnter("contact")}>
+            <button
+              ref={(el) => { btnRefs.current["contact"] = el; }}
+              className="px-5 py-2.5 text-sm font-medium text-white/80 hover:text-white transition-colors rounded-full relative z-10"
+            >
+              Contato
+            </button>
+            <AnimatePresence>
+              {activeTab === "contact" && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute top-full right-0 mt-4 w-[300px] p-6 bg-black/60 backdrop-blur-2xl border border-white/10 rounded-[2rem] text-white shadow-2xl"
+                >
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-40 block mb-2">Fale conosco</span>
+                  <p className="text-sm font-medium mb-4 opacity-80">
+                    Vamos dar forma ao que o céu está comunicando a você.
+                  </p>
+                  <div className="flex items-center justify-between p-1 bg-white/10 rounded-full pl-4">
+                    <span className="text-[10px] font-bold tracking-widest opacity-80">CONTATO@KAIROS.COM</span>
+                    <button
+                      onClick={copyEmail}
+                      className="flex items-center justify-center w-9 h-9 bg-white/20 hover:bg-white/30 transition-colors rounded-full"
+                    >
+                      {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </motion.div>
+      </nav>
+
+      {/* ── MOBILE NAV (< md) ── */}
+      <nav className="fixed top-0 left-0 right-0 z-50 md:hidden">
+        {/* Top bar */}
+        <motion.div
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className={`flex items-center justify-between px-5 py-4 backdrop-blur-xl border-b transition-all duration-500 ${
+            scrolled || mobileOpen
+              ? "bg-black/50 border-white/10"
+              : "bg-black/20 border-white/[0.06]"
+          }`}
+        >
+          <Link href="/">
+            <div className="flex items-center cursor-pointer">
+              <LogoSvg />
+            </div>
+          </Link>
+
+          <button
+            onClick={() => setMobileOpen((o) => !o)}
+            className="w-10 h-10 flex items-center justify-center text-white/80 hover:text-white transition-colors"
+            aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              {mobileOpen ? (
+                <motion.span
+                  key="close"
+                  initial={{ rotate: -90, opacity: 0 }}
+                  animate={{ rotate: 0, opacity: 1 }}
+                  exit={{ rotate: 90, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <X className="w-5 h-5" />
+                </motion.span>
+              ) : (
+                <motion.span
+                  key="open"
+                  initial={{ rotate: 90, opacity: 0 }}
+                  animate={{ rotate: 0, opacity: 1 }}
+                  exit={{ rotate: -90, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Menu className="w-5 h-5" />
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </button>
+        </motion.div>
+
+        {/* Drawer */}
+        <AnimatePresence>
+          {mobileOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
+              transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+              className="bg-black/80 backdrop-blur-2xl border-b border-white/10 px-5 pb-8 pt-4"
+            >
+              {/* Nav links */}
+              <ul className="mb-8">
+                {NAV_LINKS.map((link, i) => (
+                  <motion.li
+                    key={link.id}
+                    initial={{ opacity: 0, x: -16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.3, delay: i * 0.06, ease: [0.25, 0.46, 0.45, 0.94] }}
+                  >
+                    <button
+                      onClick={() => scrollTo(link.id)}
+                      className="w-full text-left py-5 text-2xl font-display font-bold italic text-white/80 hover:text-white border-b border-white/[0.07] transition-colors active:text-primary"
+                    >
+                      {link.label}
+                    </button>
+                  </motion.li>
                 ))}
+              </ul>
+
+              {/* Contact block */}
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.28, ease: [0.25, 0.46, 0.45, 0.94] }}
+              >
+                <span className="text-[10px] font-mono uppercase tracking-[0.3em] text-white/30 block mb-3">
+                  Fale conosco
+                </span>
+                <div className="flex items-center justify-between p-1 bg-white/10 rounded-full pl-4">
+                  <span className="text-xs font-bold tracking-widest text-white/70">
+                    CONTATO@KAIROS.COM
+                  </span>
+                  <button
+                    onClick={copyEmail}
+                    className="flex items-center justify-center w-10 h-10 bg-white/20 active:bg-white/30 transition-colors rounded-full"
+                  >
+                    {copied ? <Check className="w-4 h-4 text-white" /> : <Copy className="w-4 h-4 text-white" />}
+                  </button>
+                </div>
               </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-    </nav>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </nav>
+    </>
   );
 }
+
+const FOOTER_EASE: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
+const navLinks = ["Sobre", "Serviços", "Manifesto", "Valores"];
+const navHrefs = ["#sobre", "#servicos", "#manifesto", "#valores"];
 
 export function Footer() {
   return (
     <footer className="bg-foreground text-white py-20">
       <div className="container mx-auto px-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
-          <div className="space-y-6">
-            <h3 className="text-2xl font-display font-bold">Kairos</h3>
-            <p className="text-white/60 text-sm max-w-xs">
-              Redefining urban mobility for the moments that matter.
-            </p>
+          {/* Brand block */}
+          <div className="space-y-6 md:col-span-2">
+            <motion.h3
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8, ease: FOOTER_EASE }}
+              className="text-3xl font-display font-bold italic"
+            >
+              Kairós
+            </motion.h3>
+            <motion.p
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8, delay: 0.1, ease: FOOTER_EASE }}
+              className="text-white/50 text-sm max-w-md leading-relaxed"
+            >
+              Uma casa criativa da Indústria Criativa cristã, dedicada a
+              transformar propósito em expressão cultural. Dar forma ao que o céu
+              comunica.
+            </motion.p>
           </div>
+
+          {/* Nav links — staggered */}
           <div>
-            <h4 className="font-bold mb-6">Company</h4>
+            <motion.h4
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, ease: FOOTER_EASE }}
+              className="font-bold mb-6 text-sm uppercase tracking-widest text-white/40"
+            >
+              Navegação
+            </motion.h4>
             <ul className="space-y-4 text-sm text-white/60">
-              <li><a href="#" className="hover:text-white transition-colors">About Us</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Careers</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Investors</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Press</a></li>
+              {navLinks.map((label, i) => (
+                <motion.li
+                  key={label}
+                  initial={{ opacity: 0, x: -12 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: i * 0.07, ease: FOOTER_EASE }}
+                >
+                  <a href={navHrefs[i]} className="hover:text-white transition-colors">
+                    {label}
+                  </a>
+                </motion.li>
+              ))}
             </ul>
           </div>
+
+          {/* Social */}
           <div>
-            <h4 className="font-bold mb-6">Resources</h4>
-            <ul className="space-y-4 text-sm text-white/60">
-              <li><a href="#" className="hover:text-white transition-colors">Safety</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Community</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Partners</a></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-bold mb-6">Stay Connected</h4>
-            <div className="flex gap-4">
-              <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary transition-colors cursor-pointer">
-                <span className="sr-only">Twitter</span>
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"></path></svg>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary transition-colors cursor-pointer">
-                 <span className="sr-only">Instagram</span>
-                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" strokeWidth="2"></rect><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z" strokeWidth="2"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5" strokeWidth="2"></line></svg>
-              </div>
-            </div>
+            <motion.h4
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.1, ease: FOOTER_EASE }}
+              className="font-bold mb-6 text-sm uppercase tracking-widest text-white/40"
+            >
+              Conecte-se
+            </motion.h4>
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.2, ease: FOOTER_EASE }}
+              className="flex gap-4 mb-6"
+            >
+              <a
+                href="#"
+                className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary transition-colors"
+              >
+                <span className="sr-only">Instagram</span>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5" strokeWidth="2" />
+                  <path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z" strokeWidth="2" />
+                  <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" strokeWidth="2" />
+                </svg>
+              </a>
+              <a
+                href="#"
+                className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary transition-colors"
+              >
+                <span className="sr-only">YouTube</span>
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                </svg>
+              </a>
+            </motion.div>
+            <motion.p
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.3, ease: FOOTER_EASE }}
+              className="text-xs text-white/30 font-mono"
+            >
+              CONTATO@KAIROS.COM
+            </motion.p>
           </div>
         </div>
-        <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-white/40">
-          <p>© 2026 Kairos Aviation, Inc. All rights reserved.</p>
-          <div className="flex gap-6 mt-4 md:mt-0">
-            <a href="#" className="hover:text-white">Privacy Policy</a>
-            <a href="#" className="hover:text-white">Terms of Service</a>
-          </div>
+
+        {/* Bottom bar — scaleX line + fade copyright */}
+        <div className="pt-8">
+          <motion.div
+            initial={{ scaleX: 0 }}
+            whileInView={{ scaleX: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 1.0, ease: FOOTER_EASE }}
+            style={{ originX: 0 }}
+            className="h-px bg-white/10 mb-8"
+          />
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.3, ease: FOOTER_EASE }}
+            className="flex flex-col md:flex-row justify-between items-center text-xs text-white/30"
+          >
+            <p>© 2026 Kairós — Casa Criativa. Todos os direitos reservados.</p>
+            <div className="flex gap-6 mt-4 md:mt-0">
+              <a href="#" className="hover:text-white transition-colors">
+                Política de Privacidade
+              </a>
+              <a href="#" className="hover:text-white transition-colors">
+                Termos de Uso
+              </a>
+            </div>
+          </motion.div>
         </div>
       </div>
     </footer>

@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
+import { useLenis } from "@/hooks/use-lenis";
 
 function Router() {
   return (
@@ -16,6 +17,8 @@ function Router() {
 }
 
 function App() {
+  useLenis();
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>

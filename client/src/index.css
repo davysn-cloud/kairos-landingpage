@@ -2,36 +2,37 @@
 @import "tw-animate-css";
 
 @theme inline {
-  --color-background: hsl(220 20% 98%); /* Off-white/Sky mist */
-  --color-foreground: hsl(218 40% 15%); /* Deep Navy */
+  --color-background: hsl(40 20% 97%); /* Warm off-white / parchment */
+  --color-foreground: hsl(30 10% 8%); /* Deep black / authority */
   
-  --color-card: hsl(0 0% 100%);
-  --color-card-foreground: hsl(218 40% 15%);
+  --color-card: hsl(40 15% 99%);
+  --color-card-foreground: hsl(30 10% 8%);
   
-  --color-popover: hsl(0 0% 100%);
-  --color-popover-foreground: hsl(218 40% 15%);
+  --color-popover: hsl(40 15% 99%);
+  --color-popover-foreground: hsl(30 10% 8%);
   
-  --color-primary: hsl(225 100% 50%); /* Electric Blue similar to Joby */
+  --color-primary: hsl(38 70% 45%); /* Royal gold */
   --color-primary-foreground: hsl(0 0% 100%);
   
-  --color-secondary: hsl(30 100% 60%); /* Golden Hour Orange */
-  --color-secondary-foreground: hsl(218 40% 15%);
+  --color-secondary: hsl(18 45% 40%); /* Terracotta / earth */
+  --color-secondary-foreground: hsl(40 20% 97%);
   
-  --color-muted: hsl(220 14% 94%);
-  --color-muted-foreground: hsl(220 10% 45%);
+  --color-muted: hsl(35 15% 92%); /* Soft beige */
+  --color-muted-foreground: hsl(30 8% 45%);
   
-  --color-accent: hsl(220 14% 94%);
-  --color-accent-foreground: hsl(218 40% 15%);
+  --color-accent: hsl(40 30% 94%); /* Ivory / celestial */
+  --color-accent-foreground: hsl(30 10% 8%);
   
   --color-destructive: hsl(0 84% 60%);
   --color-destructive-foreground: hsl(0 0% 98%);
   
-  --color-border: hsl(220 13% 90%);
-  --color-input: hsl(220 13% 90%);
-  --color-ring: hsl(225 100% 50%);
+  --color-border: hsl(35 12% 88%);
+  --color-input: hsl(35 12% 88%);
+  --color-ring: hsl(38 70% 45%);
   
-  --font-sans: 'Inter', sans-serif;
-  --font-display: 'Outfit', sans-serif;
+  --font-sans: 'DM Sans', sans-serif;
+  --font-display: 'Playfair Display', serif;
+  --font-mono: 'JetBrains Mono', monospace;
   
   --radius-sm: 0.5rem;
   --radius-md: 0.75rem;
@@ -39,6 +40,9 @@
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
   * {
     @apply border-border;
   }
@@ -51,6 +55,9 @@
 }
 
 @layer utilities {
+  .will-change-transform {
+    will-change: transform;
+  }
   .text-balance {
     text-wrap: balance;
   }
@@ -61,5 +68,38 @@
   
   .clip-diagonal {
     clip-path: polygon(0 0, 100% 0, 100% 85%, 0 100%);
+  }
+
+  /* Swiss Style — Giant editorial typography */
+  .swiss-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.8rem, 8vw, 8rem);
+    line-height: 0.9;
+    letter-spacing: -0.04em;
+    font-weight: 700;
+  }
+
+  .swiss-title-xl {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(4rem, 10vw, 10rem);
+    line-height: 0.88;
+    letter-spacing: -0.05em;
+    font-weight: 700;
+  }
+
+  /* Swiss generous section spacing */
+  .section-swiss {
+    padding-top: clamp(3.5rem, 10vw, 10rem);
+    padding-bottom: clamp(3.5rem, 10vw, 10rem);
+  }
+
+  /* Parallax container — overflow hidden to clip translated children */
+  .parallax-container {
+    overflow: hidden;
+  }
+
+  /* GSAP parallax target */
+  .gsap-parallax {
+    will-change: transform;
   }
 }
