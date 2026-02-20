@@ -61,6 +61,7 @@ export function ManifestoSection() {
           playsInline
           className="absolute inset-0 w-full h-full object-cover"
         >
+          <source src="/videoplayback_manifesto.mp4" type="video/mp4" />
           <source src="/videoplayback.webm" type="video/webm" />
         </video>
         {/* Dark overlay — darker on mobile for readability in bright environments */}
