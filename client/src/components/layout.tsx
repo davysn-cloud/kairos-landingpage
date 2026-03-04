@@ -9,11 +9,11 @@ interface PillState {
   visible: boolean;
 }
 
-const NAV_LINKS = [
+const NAV_LINKS: Array<{ label: string; id?: string; href?: string }> = [
   { label: "Sobre", id: "sobre" },
   { label: "Serviços", id: "servicos" },
   { label: "Manifesto", id: "manifesto" },
-  { label: "Valores", id: "valores" },
+  { label: "Gráfica", href: "/grafica" },
 ];
 
 export function Navbar() {
@@ -210,6 +210,17 @@ export function Navbar() {
             Manifesto
           </button>
 
+          {/* Gráfica */}
+          <Link href="/grafica">
+            <div
+              ref={(el) => { btnRefs.current["grafica"] = el; }}
+              onMouseEnter={() => handleEnter("grafica")}
+              className="px-5 py-2.5 text-sm font-medium text-white/80 hover:text-white transition-colors rounded-full relative z-10 cursor-pointer"
+            >
+              Gráfica
+            </div>
+          </Link>
+
           {/* Contato */}
           <div className="relative" onMouseEnter={() => handleEnter("contact")}>
             <button
@@ -311,17 +322,25 @@ export function Navbar() {
               <ul className="mb-8">
                 {NAV_LINKS.map((link, i) => (
                   <motion.li
-                    key={link.id}
+                    key={link.id || link.href}
                     initial={{ opacity: 0, x: -16 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.3, delay: i * 0.06, ease: [0.25, 0.46, 0.45, 0.94] }}
                   >
-                    <button
-                      onClick={() => scrollTo(link.id)}
-                      className="w-full text-left py-5 text-2xl font-display font-bold italic text-white/80 hover:text-white border-b border-white/[0.07] transition-colors active:text-primary"
-                    >
-                      {link.label}
-                    </button>
+                    {link.href ? (
+                      <Link href={link.href} onClick={() => setMobileOpen(false)}>
+                        <div className="w-full text-left py-5 text-2xl font-display font-bold italic text-white/80 hover:text-white border-b border-white/[0.07] transition-colors active:text-primary">
+                          {link.label}
+                        </div>
+                      </Link>
+                    ) : (
+                      <button
+                        onClick={() => scrollTo(link.id!)}
+                        className="w-full text-left py-5 text-2xl font-display font-bold italic text-white/80 hover:text-white border-b border-white/[0.07] transition-colors active:text-primary"
+                      >
+                        {link.label}
+                      </button>
+                    )}
                   </motion.li>
                 ))}
               </ul>
@@ -356,8 +375,8 @@ export function Navbar() {
 }
 
 const FOOTER_EASE: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
-const navLinks = ["Sobre", "Serviços", "Manifesto", "Valores"];
-const navHrefs = ["#sobre", "#servicos", "#manifesto", "#valores"];
+const navLinks = ["Sobre", "Serviços", "Manifesto", "Gráfica", "Valores"];
+const navHrefs = ["#sobre", "#servicos", "#manifesto", "/grafica", "#valores"];
 
 export function Footer() {
   return (
@@ -408,9 +427,15 @@ export function Footer() {
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: i * 0.07, ease: FOOTER_EASE }}
                 >
-                  <a href={navHrefs[i]} className="hover:text-white transition-colors">
-                    {label}
-                  </a>
+                  {navHrefs[i].startsWith("/") ? (
+                    <Link href={navHrefs[i]} className="hover:text-white transition-colors">
+                      {label}
+                    </Link>
+                  ) : (
+                    <a href={navHrefs[i]} className="hover:text-white transition-colors">
+                      {label}
+                    </a>
+                  )}
                 </motion.li>
               ))}
             </ul>
