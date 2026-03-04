@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
+import { registerRoutes } from "../server/routes";
 import { createServer } from "http";
 
 const app = express();
@@ -20,20 +21,8 @@ app.use(
 );
 app.use(express.urlencoded({ extended: false }));
 
-try {
-  const { registerRoutes } = await import("../server/routes");
-  const httpServer = createServer(app);
-  await registerRoutes(httpServer, app);
-} catch (err: any) {
-  console.error("[Vercel] Failed to initialize routes:", err);
-  // Expose the error on a catch-all so we can debug
-  app.use((_req: Request, res: Response) => {
-    res.status(500).json({
-      error: "Server initialization failed",
-      message: err?.message || String(err),
-    });
-  });
-}
+const httpServer = createServer(app);
+await registerRoutes(httpServer, app);
 
 app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
   const status = err.status || err.statusCode || 500;
