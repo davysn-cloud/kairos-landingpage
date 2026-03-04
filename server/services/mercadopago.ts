@@ -23,7 +23,8 @@ const client = new MercadoPagoConfig({
 const preferenceClient = new Preference(client);
 const paymentClient = new Payment(client);
 
-const SITE_URL = process.env.SITE_URL || "http://localhost:5000";
+// Remove trailing slash to avoid double-slash in URLs (e.g. notification_url)
+const SITE_URL = (process.env.SITE_URL || "http://localhost:5000").replace(/\/+$/, "");
 
 interface PreferenceItem {
   id: string;

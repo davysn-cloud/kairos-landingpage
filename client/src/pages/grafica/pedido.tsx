@@ -39,17 +39,17 @@ const PAYMENT_STATUS_MAP: Record<string, { label: string; color: string }> = {
  * MP redirects with ?mp_status=approved|rejected|pending
  * and also adds collection_id, collection_status, payment_id, etc.
  */
-function getMpStatusFromUrl(): string | null {
+function getMpParamsFromUrl(): { mpStatus: string | null; paymentId: string | null } {
   const params = new URLSearchParams(window.location.search);
-  return params.get("mp_status") || params.get("collection_status") || null;
+  return {
+    mpStatus: params.get("mp_status") || params.get("collection_status") || null,
+    paymentId: params.get("payment_id") || params.get("collection_id") || null,
+  };
 }
 
 export default function GraficaPedido({ id }: GraficaPedidoProps) {
   const [mpStatus, setMpStatus] = useState<string | null>(null);
-
-  useEffect(() => {
-    setMpStatus(getMpStatusFromUrl());
-  }, []);
+  const [verified, setVerified] = useState(false);
 
   // Fetch order with auto-refetch when payment is pending (webhook may update it)
   const { data: order, isLoading, error, refetch } = useQuery<OrderWithItems>({
@@ -61,6 +61,26 @@ export default function GraficaPedido({ id }: GraficaPedidoProps) {
       return false;
     },
   });
+
+  // On mount: parse MP redirect params and actively verify payment with backend
+  useEffect(() => {
+    const { mpStatus: status, paymentId } = getMpParamsFromUrl();
+    setMpStatus(status);
+
+    if (paymentId && !verified) {
+      setVerified(true);
+      fetch(`/api/grafica/orders/${id}/verify-payment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentId }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.updated) refetch();
+        })
+        .catch(() => {});
+    }
+  }, [id, verified, refetch]);
 
   const statusInfo = order ? STATUS_MAP[order.status] ?? STATUS_MAP.pending : STATUS_MAP.pending;
   const StatusIcon = statusInfo.icon;

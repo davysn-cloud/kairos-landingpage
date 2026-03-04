@@ -537,5 +537,87 @@ export async function registerRoutes(
     });
   });
 
+  // ── Verify Payment (active check when user returns from MP) ──
+  // MercadoPago redirects with ?payment_id=...&collection_id=... in the URL.
+  // This endpoint fetches the payment status directly from MP API and updates the order,
+  // as a fallback in case the webhook didn't fire (unreliable in sandbox, double-slash URL, etc.)
+
+  app.post("/api/grafica/orders/:id/verify-payment", async (req, res) => {
+    const orderId = req.params.id as string;
+    const { paymentId } = req.body;
+
+    const order = await storage.getOrder(orderId);
+    if (!order) {
+      res.status(404).json({ message: "Pedido não encontrado" });
+      return;
+    }
+
+    // Already approved — skip
+    if (order.paymentStatus === "approved") {
+      res.json({
+        orderId: order.id,
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        updated: false,
+      });
+      return;
+    }
+
+    // If no paymentId provided, nothing to verify
+    if (!paymentId) {
+      res.json({
+        orderId: order.id,
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        updated: false,
+      });
+      return;
+    }
+
+    try {
+      const payment = await getPayment(String(paymentId));
+      console.log(`[VerifyPayment] Order ${orderId}: MP payment ${paymentId} status=${payment.status}`);
+
+      // Ensure payment belongs to this order
+      if (payment.externalReference !== orderId) {
+        console.warn(`[VerifyPayment] Payment ${paymentId} ref=${payment.externalReference} does not match order ${orderId}`);
+        res.status(400).json({ message: "Pagamento não corresponde ao pedido" });
+        return;
+      }
+
+      const { orderStatus, paymentStatus } = mapPaymentStatus(payment.status);
+
+      if (order.paymentStatus !== paymentStatus) {
+        await storage.updatePaymentStatus(orderId, paymentStatus, String(paymentId));
+        await storage.updateOrderStatus(orderId, orderStatus);
+        console.log(`[VerifyPayment] Order ${orderId} updated: status=${orderStatus}, payment=${paymentStatus}`);
+
+        // Clear cart on approval
+        if (paymentStatus === "approved" && order.notes) {
+          const sessionMatch = order.notes.match(/__sessionId:(\S+)/);
+          if (sessionMatch) {
+            await storage.clearCart(sessionMatch[1]);
+          }
+        }
+      }
+
+      res.json({
+        orderId: order.id,
+        status: orderStatus,
+        paymentStatus,
+        updated: order.paymentStatus !== paymentStatus,
+      });
+    } catch (err: any) {
+      console.error(`[VerifyPayment] Error verifying payment ${paymentId}:`, err?.message || err);
+      res.json({
+        orderId: order.id,
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        updated: false,
+        error: "Não foi possível verificar o pagamento",
+      });
+    }
+  });
+
   return httpServer;
 }
