@@ -19,8 +19,8 @@ import type { CartItem } from "../../shared/schema";
 
 const MELHOR_ENVIO_TOKEN = process.env.MELHOR_ENVIO_TOKEN || "";
 const WAREHOUSE_CEP = process.env.WAREHOUSE_CEP || "01001000";
-const IS_SANDBOX = process.env.MELHOR_ENVIO_SANDBOX === "true"
-  || MELHOR_ENVIO_TOKEN.startsWith("sandbox");
+// Default to sandbox unless MELHOR_ENVIO_SANDBOX is explicitly "false"
+const IS_SANDBOX = process.env.MELHOR_ENVIO_SANDBOX !== "false";
 const BASE_URL = IS_SANDBOX
   ? "https://sandbox.melhorenvio.com.br"
   : "https://api.melhorenvio.com.br";

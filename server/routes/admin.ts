@@ -679,7 +679,7 @@ export function registerAdminRoutes(app: Express) {
     if (!meToken) {
       statuses.push({ service: "Melhor Envio", connected: false, details: "MELHOR_ENVIO_TOKEN não configurado" });
     } else {
-      const isSandbox = process.env.MELHOR_ENVIO_SANDBOX === "true" || meToken.startsWith("sandbox");
+      const isSandbox = process.env.MELHOR_ENVIO_SANDBOX !== "false";
       const meBaseUrl = isSandbox ? "https://sandbox.melhorenvio.com.br" : "https://api.melhorenvio.com.br";
       try {
         const meRes = await fetch(`${meBaseUrl}/api/v2/me`, {
