@@ -213,6 +213,59 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  // ── Shipping Debug (TEMPORARY — remove after diagnosis) ──
+
+  app.get("/api/debug/shipping", async (_req, res) => {
+    const token = process.env.MELHOR_ENVIO_TOKEN || "";
+    const isSandbox = process.env.MELHOR_ENVIO_SANDBOX === "true" || token.startsWith("sandbox");
+    const baseUrl = isSandbox ? "https://sandbox.melhorenvio.com.br" : "https://api.melhorenvio.com.br";
+    const result: any = {
+      tokenPresent: !!token,
+      tokenLength: token.length,
+      tokenStart: token.substring(0, 20) + "...",
+      isSandbox,
+      baseUrl,
+    };
+    if (token) {
+      try {
+        const meRes = await fetch(`${baseUrl}/api/v2/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+            "User-Agent": "Kairos Grafica (contato@kairos.com.br)",
+          },
+        });
+        result.apiStatus = meRes.status;
+        result.apiBody = await meRes.text().catch(() => "failed to read");
+      } catch (err: any) {
+        result.apiError = err?.message || String(err);
+      }
+      // Also test a shipping quote
+      try {
+        const quoteRes = await fetch(`${baseUrl}/api/v2/me/shipment/calculate`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "User-Agent": "Kairos Grafica (contato@kairos.com.br)",
+          },
+          body: JSON.stringify({
+            from: { postal_code: "01001000" },
+            to: { postal_code: "01310100" },
+            package: { weight: 1, width: 20, height: 10, length: 30 },
+            options: { insurance_value: 50, receipt: false, own_hand: false },
+          }),
+        });
+        result.quoteStatus = quoteRes.status;
+        result.quoteBody = await quoteRes.text().catch(() => "failed to read");
+      } catch (err: any) {
+        result.quoteError = err?.message || String(err);
+      }
+    }
+    res.json(result);
+  });
+
   // ── Shipping ──
 
   app.post("/api/grafica/shipping/quote", async (req, res) => {
