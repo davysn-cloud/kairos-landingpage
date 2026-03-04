@@ -5,7 +5,7 @@
 import { build } from "esbuild";
 
 await build({
-  entryPoints: ["api/index.ts"],
+  entryPoints: ["server/vercel-entry.ts"],
   bundle: true,
   platform: "node",
   target: "node20",
@@ -28,9 +28,5 @@ await build({
   minify: false,
   sourcemap: false,
 });
-
-// Remove .ts so Vercel uses the bundled .js
-import { unlinkSync } from "fs";
-try { unlinkSync("api/index.ts"); } catch {}
 
 console.log("[build-api] api/index.js built successfully");
