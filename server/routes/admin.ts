@@ -339,12 +339,19 @@ export function registerAdminRoutes(app: Express) {
       const pkg = await calculatePackage(fakeCartItems);
       const insuredValue = parseFloat(order.total);
 
+      const meProducts = orderItemsList.map((oi) => ({
+        name: oi.productName,
+        quantity: oi.quantity,
+        unitary_value: parseFloat(oi.subtotal) / oi.quantity || 1,
+      }));
+
       const { cartItemId } = await addToMelhorEnvioCart({
         melhorEnvioServiceId, fromCep: process.env.WAREHOUSE_CEP || "01001000",
         toCep: address.cep, toName: address.name || "Cliente",
         toAddress: address.street, toNumber: address.number,
         toComplement: address.complement, toNeighborhood: address.neighborhood,
         toCity: address.city, toState: address.state, pkg, insuredValue, orderId: order.id,
+        products: meProducts,
       });
 
       await checkoutShipment([cartItemId]);

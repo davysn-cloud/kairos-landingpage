@@ -236,11 +236,40 @@ export async function calculateShipping(
 /**
  * Adds a shipment to the Melhor Envio cart for label purchase.
  */
+// Warehouse config (from) — used for label generation
+// Set env vars for real data; defaults are sandbox-safe placeholders
+const WAREHOUSE_FROM = {
+  name: process.env.WAREHOUSE_NAME || "Kairos Gráfica",
+  phone: process.env.WAREHOUSE_PHONE || "11999999999",
+  email: process.env.WAREHOUSE_EMAIL || "contato@kairos.com.br",
+  document: process.env.WAREHOUSE_DOCUMENT || "12345678909", // CPF — required by ME API
+  address: process.env.WAREHOUSE_ADDRESS || "Praça da Sé",
+  number: process.env.WAREHOUSE_NUMBER || "100",
+  complement: process.env.WAREHOUSE_COMPLEMENT || "",
+  district: process.env.WAREHOUSE_DISTRICT || "Sé",
+  city: process.env.WAREHOUSE_CITY || "São Paulo",
+  state_abbr: process.env.WAREHOUSE_STATE || "SP",
+  country_id: "BR",
+};
+
+/** Generate a valid CPF for sandbox testing (to.document fallback) */
+function generateValidCPF(): string {
+  const rand = (n: number) => Math.floor(Math.random() * n);
+  const mod = (d: number, n: number) => d % n < 2 ? 0 : n - (d % n);
+  const d = Array.from({ length: 9 }, () => rand(9));
+  d.push(mod(d.reduce((s, v, i) => s + v * (10 - i), 0), 11));
+  d.push(mod(d.reduce((s, v, i) => s + v * (11 - i), 0), 11));
+  return d.join("");
+}
+
 export async function addToMelhorEnvioCart(params: {
   melhorEnvioServiceId: number;
   fromCep: string;
   toCep: string;
   toName: string;
+  toPhone?: string;
+  toEmail?: string;
+  toDocument?: string;
   toAddress: string;
   toNumber: string;
   toComplement?: string;
@@ -250,6 +279,7 @@ export async function addToMelhorEnvioCart(params: {
   pkg: PackageDimensions;
   insuredValue: number;
   orderId: string;
+  products: { name: string; quantity: number; unitary_value: number }[];
 }): Promise<{ cartItemId: string }> {
   if (!MELHOR_ENVIO_TOKEN) {
     throw new Error("MELHOR_ENVIO_TOKEN is required for label generation");
@@ -258,13 +288,14 @@ export async function addToMelhorEnvioCart(params: {
   const body = {
     service: params.melhorEnvioServiceId,
     from: {
-      name: "Kairos Gráfica",
+      ...WAREHOUSE_FROM,
       postal_code: params.fromCep || WAREHOUSE_CEP,
-      address: "Endereço da gráfica",
-      number: "S/N",
     },
     to: {
       name: params.toName,
+      phone: params.toPhone || "11999999999",
+      email: params.toEmail || "cliente@kairos.com.br",
+      document: params.toDocument || generateValidCPF(),
       postal_code: params.toCep,
       address: params.toAddress,
       number: params.toNumber,
@@ -272,7 +303,9 @@ export async function addToMelhorEnvioCart(params: {
       district: params.toNeighborhood,
       city: params.toCity,
       state_abbr: params.toState,
+      country_id: "BR",
     },
+    products: params.products,
     package: {
       weight: params.pkg.weightKg,
       width: params.pkg.widthCm,
@@ -457,12 +490,23 @@ export async function autoGenerateLabel(orderId: string): Promise<void> {
 
     console.log(`[AutoLabel] Order ${orderId}: pkg=${JSON.stringify(pkg)}, serviceId=${serviceId}, to=${addr.city}/${addr.state}`);
 
+    // Build products array for Melhor Envio (required for "declaração de conteúdo")
+    const meProducts = items.map((item) => ({
+      name: item.productName,
+      quantity: item.quantity,
+      unitary_value: parseFloat(item.unitPrice) * item.quantity > 0
+        ? parseFloat((parseFloat(item.subtotal) / item.quantity).toFixed(2))
+        : 1,
+    }));
+
     // 4. Add to Melhor Envio cart
     const { cartItemId } = await addToMelhorEnvioCart({
       melhorEnvioServiceId: serviceId,
       fromCep: WAREHOUSE_CEP,
       toCep: addr.cep,
       toName: recipientName,
+      toPhone: customer?.phone || undefined,
+      toEmail: customer?.email || undefined,
       toAddress: addr.street,
       toNumber: addr.number,
       toComplement: addr.complement,
@@ -472,6 +516,7 @@ export async function autoGenerateLabel(orderId: string): Promise<void> {
       pkg,
       insuredValue,
       orderId,
+      products: meProducts,
     });
     console.log(`[AutoLabel] Order ${orderId}: added to cart, cartItemId=${cartItemId}`);
 
