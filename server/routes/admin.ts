@@ -153,6 +153,28 @@ const updateSettingsSchema = z.object({
   settings: z.record(z.string()),
 });
 
+const createEstrategiaPlanSchema = z.object({
+  name: z.string().min(1),
+  price: z.string().min(1),
+  period: z.string().default("/mês"),
+  recommended: z.boolean().default(false),
+  features: z.array(z.string()).default([]),
+  whatsappMessage: z.string().default(""),
+  sortOrder: z.number().int().default(0),
+  active: z.boolean().default(true),
+});
+
+const updateEstrategiaPlanSchema = createEstrategiaPlanSchema.partial();
+
+const createEstrategiaStepSchema = z.object({
+  number: z.string().min(1),
+  title: z.string().min(1),
+  description: z.string().min(1),
+  sortOrder: z.number().int().default(0),
+});
+
+const updateEstrategiaStepSchema = createEstrategiaStepSchema.partial();
+
 // Helper to create audit log
 async function audit(adminUserId: string, action: string, entityType: string, entityId?: string, details?: Record<string, any>, ip?: string) {
   try {
@@ -810,6 +832,64 @@ export function registerAdminRoutes(app: Express) {
   app.delete("/api/admin/coupons/:id", requireRole("admin"), async (req, res) => {
     await storage.deleteCoupon(str(req.params.id));
     await audit(req.adminUserId!, "delete", "coupon", str(req.params.id));
+    res.status(204).send();
+  });
+
+  // ══════════════════════════════════════════
+  // ESTRATÉGIA DE CONTEÚDO (admin only)
+  // ══════════════════════════════════════════
+
+  app.get("/api/admin/estrategia/plans", requireRole("admin"), async (_req, res) => {
+    const data = await storage.getAllEstrategiaPlans();
+    res.json(data);
+  });
+
+  app.post("/api/admin/estrategia/plans", requireRole("admin"), validate(createEstrategiaPlanSchema), async (req, res) => {
+    const plan = await storage.createEstrategiaPlan(req.body);
+    await audit(req.adminUserId!, "create", "estrategia_plan", plan.id);
+    res.status(201).json(plan);
+  });
+
+  app.patch("/api/admin/estrategia/plans/:id", requireRole("admin"), validate(updateEstrategiaPlanSchema), async (req, res) => {
+    const plan = await storage.updateEstrategiaPlan(str(req.params.id), req.body);
+    if (!plan) {
+      res.status(404).json({ message: "Plano não encontrado" });
+      return;
+    }
+    await audit(req.adminUserId!, "update", "estrategia_plan", str(req.params.id));
+    res.json(plan);
+  });
+
+  app.delete("/api/admin/estrategia/plans/:id", requireRole("admin"), async (req, res) => {
+    await storage.deleteEstrategiaPlan(str(req.params.id));
+    await audit(req.adminUserId!, "delete", "estrategia_plan", str(req.params.id));
+    res.status(204).send();
+  });
+
+  app.get("/api/admin/estrategia/steps", requireRole("admin"), async (_req, res) => {
+    const data = await storage.getAllEstrategiaSteps();
+    res.json(data);
+  });
+
+  app.post("/api/admin/estrategia/steps", requireRole("admin"), validate(createEstrategiaStepSchema), async (req, res) => {
+    const step = await storage.createEstrategiaStep(req.body);
+    await audit(req.adminUserId!, "create", "estrategia_step", step.id);
+    res.status(201).json(step);
+  });
+
+  app.patch("/api/admin/estrategia/steps/:id", requireRole("admin"), validate(updateEstrategiaStepSchema), async (req, res) => {
+    const step = await storage.updateEstrategiaStep(str(req.params.id), req.body);
+    if (!step) {
+      res.status(404).json({ message: "Passo não encontrado" });
+      return;
+    }
+    await audit(req.adminUserId!, "update", "estrategia_step", str(req.params.id));
+    res.json(step);
+  });
+
+  app.delete("/api/admin/estrategia/steps/:id", requireRole("admin"), async (req, res) => {
+    await storage.deleteEstrategiaStep(str(req.params.id));
+    await audit(req.adminUserId!, "delete", "estrategia_step", str(req.params.id));
     res.status(204).send();
   });
 

@@ -15,6 +15,7 @@ const ProductEditor = lazy(() => import("./catalog/product-editor"));
 const PaperTypes = lazy(() => import("./catalog/paper-types"));
 const Finishings = lazy(() => import("./catalog/finishings"));
 const CouponsPage = lazy(() => import("./coupons"));
+const EstrategiaAdmin = lazy(() => import("./estrategia"));
 const CustomersList = lazy(() => import("./customers/index"));
 const CustomerDetail = lazy(() => import("./customers/[id]"));
 const Reports = lazy(() => import("./reports/index"));
@@ -71,6 +72,7 @@ export default function AdminLayout() {
               <Route path="/catalog/paper-types" component={PaperTypes} />
               <Route path="/catalog/finishings" component={Finishings} />
               <Route path="/coupons" component={CouponsPage} />
+              <Route path="/estrategia" component={EstrategiaAdmin} />
               <Route path="/customers" component={CustomersList} />
               <Route path="/customers/:id">
                 {(params) => <CustomerDetail id={params.id} />}

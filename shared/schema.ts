@@ -286,3 +286,35 @@ export const orderNotes = pgTable("order_notes", {
 export const insertOrderNoteSchema = createInsertSchema(orderNotes).omit({ id: true, createdAt: true });
 export type InsertOrderNote = z.infer<typeof insertOrderNoteSchema>;
 export type OrderNote = typeof orderNotes.$inferSelect;
+
+// ── Estratégia de Conteúdo: Plans ──
+export const estrategiaPlans = pgTable("estrategia_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  price: text("price").notNull(),
+  period: text("period").notNull().default("/mês"),
+  recommended: boolean("recommended").notNull().default(false),
+  features: jsonb("features").$type<string[]>().notNull().default([]),
+  whatsappMessage: text("whatsapp_message").notNull().default(""),
+  sortOrder: integer("sort_order").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertEstrategiaPlanSchema = createInsertSchema(estrategiaPlans).omit({ id: true, createdAt: true });
+export type InsertEstrategiaPlan = z.infer<typeof insertEstrategiaPlanSchema>;
+export type EstrategiaPlan = typeof estrategiaPlans.$inferSelect;
+
+// ── Estratégia de Conteúdo: Steps ──
+export const estrategiaSteps = pgTable("estrategia_steps", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  number: text("number").notNull(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertEstrategiaStepSchema = createInsertSchema(estrategiaSteps).omit({ id: true, createdAt: true });
+export type InsertEstrategiaStep = z.infer<typeof insertEstrategiaStepSchema>;
+export type EstrategiaStep = typeof estrategiaSteps.$inferSelect;

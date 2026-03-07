@@ -81,7 +81,22 @@ Sitemap: ${siteUrl}/sitemap.xml
   // ── Payment Mode Config ──
 
   app.get("/api/config/payment-mode", (_req, res) => {
-    res.json({ mode: process.env.PAYMENT_MODE || "mercadopago" });
+    res.json({
+      mode: process.env.PAYMENT_MODE || "mercadopago",
+      whatsappNumber: process.env.WHATSAPP_NUMBER || "",
+    });
+  });
+
+  // ── Estratégia de Conteúdo (public) ──
+
+  app.get("/api/estrategia/plans", async (_req, res) => {
+    const plans = await storage.getActiveEstrategiaPlans();
+    res.json(plans);
+  });
+
+  app.get("/api/estrategia/steps", async (_req, res) => {
+    const steps = await storage.getAllEstrategiaSteps();
+    res.json(steps);
   });
 
   // ── Gráfica: Categories ──

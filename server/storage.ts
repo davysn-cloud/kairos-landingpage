@@ -12,10 +12,13 @@ import {
   type Coupon, type InsertCoupon,
   type Address, type InsertAddress,
   type OrderNote, type InsertOrderNote,
+  type EstrategiaPlan, type InsertEstrategiaPlan,
+  type EstrategiaStep, type InsertEstrategiaStep,
   users, categories, products, productVariants,
   paperTypes, finishings, priceRules,
   cartItems, orders, orderItems, customers,
   adminUsers, auditLog, storeSettings, coupons, addresses, orderNotes,
+  estrategiaPlans, estrategiaSteps,
   type InsertCategory, type InsertProduct, type InsertProductVariant,
   type InsertPaperType, type InsertFinishing, type InsertPriceRule,
 } from "../shared/schema";
@@ -147,6 +150,17 @@ export interface IStorage {
   // Order Notes
   getOrderNotes(orderId: string): Promise<OrderNote[]>;
   createOrderNote(data: InsertOrderNote): Promise<OrderNote>;
+
+  // Estratégia de Conteúdo
+  getActiveEstrategiaPlans(): Promise<EstrategiaPlan[]>;
+  getAllEstrategiaPlans(): Promise<EstrategiaPlan[]>;
+  createEstrategiaPlan(data: InsertEstrategiaPlan): Promise<EstrategiaPlan>;
+  updateEstrategiaPlan(id: string, data: Partial<InsertEstrategiaPlan>): Promise<EstrategiaPlan | undefined>;
+  deleteEstrategiaPlan(id: string): Promise<void>;
+  getAllEstrategiaSteps(): Promise<EstrategiaStep[]>;
+  createEstrategiaStep(data: InsertEstrategiaStep): Promise<EstrategiaStep>;
+  updateEstrategiaStep(id: string, data: Partial<InsertEstrategiaStep>): Promise<EstrategiaStep | undefined>;
+  deleteEstrategiaStep(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -820,6 +834,49 @@ export class DatabaseStorage implements IStorage {
   async createOrderNote(data: InsertOrderNote): Promise<OrderNote> {
     const [note] = await db.insert(orderNotes).values(data).returning();
     return note;
+  }
+
+  // ── Estratégia de Conteúdo ──
+  async getActiveEstrategiaPlans(): Promise<EstrategiaPlan[]> {
+    return db.select().from(estrategiaPlans)
+      .where(eq(estrategiaPlans.active, true))
+      .orderBy(asc(estrategiaPlans.sortOrder));
+  }
+
+  async getAllEstrategiaPlans(): Promise<EstrategiaPlan[]> {
+    return db.select().from(estrategiaPlans).orderBy(asc(estrategiaPlans.sortOrder));
+  }
+
+  async createEstrategiaPlan(data: InsertEstrategiaPlan): Promise<EstrategiaPlan> {
+    const [plan] = await db.insert(estrategiaPlans).values(data).returning();
+    return plan;
+  }
+
+  async updateEstrategiaPlan(id: string, data: Partial<InsertEstrategiaPlan>): Promise<EstrategiaPlan | undefined> {
+    const [plan] = await db.update(estrategiaPlans).set(data).where(eq(estrategiaPlans.id, id)).returning();
+    return plan;
+  }
+
+  async deleteEstrategiaPlan(id: string): Promise<void> {
+    await db.delete(estrategiaPlans).where(eq(estrategiaPlans.id, id));
+  }
+
+  async getAllEstrategiaSteps(): Promise<EstrategiaStep[]> {
+    return db.select().from(estrategiaSteps).orderBy(asc(estrategiaSteps.sortOrder));
+  }
+
+  async createEstrategiaStep(data: InsertEstrategiaStep): Promise<EstrategiaStep> {
+    const [step] = await db.insert(estrategiaSteps).values(data).returning();
+    return step;
+  }
+
+  async updateEstrategiaStep(id: string, data: Partial<InsertEstrategiaStep>): Promise<EstrategiaStep | undefined> {
+    const [step] = await db.update(estrategiaSteps).set(data).where(eq(estrategiaSteps.id, id)).returning();
+    return step;
+  }
+
+  async deleteEstrategiaStep(id: string): Promise<void> {
+    await db.delete(estrategiaSteps).where(eq(estrategiaSteps.id, id));
   }
 }
 
