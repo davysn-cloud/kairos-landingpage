@@ -75,7 +75,7 @@ export default function GraficaCarrinho() {
                 >
                   <div className="flex gap-4">
                     <div className="w-20 h-20 rounded-lg bg-muted/30 flex items-center justify-center shrink-0">
-                      <span className="text-3xl font-display font-bold italic text-primary/15">
+                      <span className="text-3xl font-display font-bold uppercase text-foreground/10">
                         {item.product?.name?.charAt(0) ?? "P"}
                       </span>
                     </div>
@@ -172,7 +172,7 @@ export default function GraficaCarrinho() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Frete</span>
-                      <span className="text-muted-foreground italic text-xs">calculado no checkout</span>
+                      <span className="text-muted-foreground text-xs">calculado no checkout</span>
                     </div>
                   </div>
 

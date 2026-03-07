@@ -222,7 +222,7 @@ export default function GraficaProduto({ slug }: GraficaProdutoProps) {
                   <>
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5" />
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-8xl font-display font-bold italic text-primary/10">
+                      <span className="text-8xl font-display font-bold uppercase text-foreground/10">
                         {product.name.charAt(0)}
                       </span>
                     </div>

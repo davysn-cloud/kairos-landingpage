@@ -38,6 +38,7 @@ interface CreatePreferenceInput {
   orderId: string;
   items: PreferenceItem[];
   shippingCost: number;
+  discountAmount?: number;
   payer: {
     name: string;
     email: string;
@@ -53,7 +54,7 @@ interface CreatePreferenceInput {
  * Returns the preference id, init_point (production) and sandbox_init_point (testing).
  */
 export async function createPreference(input: CreatePreferenceInput) {
-  const { orderId, items, shippingCost, payer } = input;
+  const { orderId, items, shippingCost, discountAmount = 0, payer } = input;
 
   const mpItems = items.map((item) => ({
     id: item.id,
@@ -72,6 +73,19 @@ export async function createPreference(input: CreatePreferenceInput) {
       unit_price: parseFloat(shippingCost.toFixed(2)),
       currency_id: "BRL" as const,
     });
+  }
+
+  // Apply discount by distributing proportionally across items
+  if (discountAmount > 0) {
+    const itemsTotal = mpItems.reduce((sum, i) => sum + i.unit_price * i.quantity, 0);
+    if (itemsTotal > 0) {
+      for (const item of mpItems) {
+        if (item.id === "shipping") continue;
+        const proportion = (item.unit_price * item.quantity) / itemsTotal;
+        const itemDiscount = discountAmount * proportion / item.quantity;
+        item.unit_price = parseFloat(Math.max(item.unit_price - itemDiscount, 0.01).toFixed(2));
+      }
+    }
   }
 
   // notification_url must be a publicly accessible HTTPS URL.
@@ -135,6 +149,41 @@ export async function getPayment(paymentId: string) {
 }
 
 /**
+ * Creates a refund for a MercadoPago payment.
+ * If amount is omitted, performs a full refund.
+ *
+ * Official docs: https://www.mercadopago.com.br/developers/en/reference/chargebacks/_payments_id_refunds/post
+ */
+export async function createRefund(paymentId: string, amount?: number): Promise<{ refundId: string; status: string }> {
+  const accessToken = process.env.MP_ACCESS_TOKEN;
+  if (!accessToken) {
+    throw new Error("MP_ACCESS_TOKEN not configured");
+  }
+
+  const body: Record<string, any> = {};
+  if (amount !== undefined) {
+    body.amount = amount;
+  }
+
+  const response = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}/refunds`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`MercadoPago refund error ${response.status}: ${text}`);
+  }
+
+  const data = await response.json() as { id: number; status: string };
+  return { refundId: String(data.id), status: data.status };
+}
+
+/**
  * Maps MercadoPago payment status to our internal order/payment statuses.
  *
  * MP statuses: approved, pending, in_process, rejected, cancelled, refunded, charged_back
@@ -158,7 +207,7 @@ export function mapPaymentStatus(mpStatus: string): {
       return { orderStatus: "cancelled", paymentStatus: "rejected" };
     case "refunded":
     case "charged_back":
-      return { orderStatus: "cancelled", paymentStatus: "rejected" };
+      return { orderStatus: "cancelled", paymentStatus: "refunded" };
     default:
       return { orderStatus: "pending", paymentStatus: "pending" };
   }

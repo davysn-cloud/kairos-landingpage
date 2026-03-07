@@ -41,7 +41,7 @@ export function ProductCard({ product, index }: ProductCardProps) {
             <>
               <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5" />
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-5xl font-display font-bold italic text-primary/10 group-hover:text-primary/20 transition-colors duration-500">
+                <span className="text-5xl font-display font-bold uppercase text-foreground/10 group-hover:text-foreground/20 transition-colors duration-500">
                   {product.name.charAt(0)}
                 </span>
               </div>

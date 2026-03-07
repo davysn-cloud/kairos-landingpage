@@ -77,18 +77,18 @@ export function ManifestoSection() {
               whileInView={{ y: 0, opacity: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, ease: EASE }}
-              className="text-[hsl(38,60%,70%)] font-mono text-xs uppercase tracking-[0.3em] block"
+              className="text-white/40 font-mono text-xs uppercase tracking-[0.3em] block"
             >
               Manifesto
             </motion.span>
           </div>
           <h2
             ref={titleRef}
-            className="swiss-title-xl font-display font-bold italic text-[hsl(40,25%,88%)] gsap-parallax"
+            className="swiss-title-xl font-display font-bold text-white/90 gsap-parallax"
           >
             A voz da
             <br />
-            <span className="text-[hsl(38,60%,72%)]">Embaixada</span>
+            <span className="text-white/50">Embaixada</span>
           </h2>
         </div>
 
@@ -108,11 +108,11 @@ export function ManifestoSection() {
                 }}
               >
                 {isItalic ? (
-                  <p className="text-lg md:text-3xl leading-relaxed font-display italic text-[hsl(40,20%,82%)] whitespace-pre-line">
+                  <p className="text-lg md:text-3xl leading-relaxed font-display text-white/70 whitespace-pre-line">
                     {line}
                   </p>
                 ) : (
-                  <p className="text-base md:text-xl leading-relaxed text-[hsl(40,15%,68%)]">
+                  <p className="text-base md:text-xl leading-relaxed text-white/50">
                     {line}
                   </p>
                 )}
@@ -129,14 +129,14 @@ export function ManifestoSection() {
             viewport={{ once: true }}
             transition={{ duration: 1.2, delay: 0.2, ease: EASE }}
             style={{ originX: 0 }}
-            className="h-px flex-1 bg-gradient-to-r from-[hsl(38,60%,60%)]/50 to-transparent"
+            className="h-px flex-1 bg-gradient-to-r from-white/30 to-transparent"
           />
           <motion.span
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8, delay: 0.8, ease: EASE }}
-            className="text-[hsl(38,60%,70%)] font-display text-sm italic tracking-wide"
+            className="text-white/40 font-display text-sm tracking-wide uppercase"
           >
             Kairós — Casa Criativa
           </motion.span>

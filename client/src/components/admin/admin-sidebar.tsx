@@ -2,7 +2,7 @@ import { useLocation } from "wouter";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
 import {
   LayoutDashboard, ShoppingCart, Package, Users, BarChart3,
-  Settings, FolderTree, FileText, Palette, Layers,
+  Settings, FolderTree, FileText, Palette, Layers, Ticket,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +21,7 @@ const navItems: NavItem[] = [
   { label: "Produtos", href: "/catalog/products", icon: Package, roles: ["admin"] },
   { label: "Papéis", href: "/catalog/paper-types", icon: FileText, roles: ["admin"] },
   { label: "Acabamentos", href: "/catalog/finishings", icon: Palette, roles: ["admin"] },
+  { label: "Cupons", href: "/coupons", icon: Ticket, roles: ["admin"] },
   { label: "Clientes", href: "/customers", icon: Users, roles: ["admin", "operador", "financeiro"] },
   { label: "Relatórios", href: "/reports", icon: BarChart3, roles: ["admin", "financeiro"] },
   { label: "Configurações", href: "/settings", icon: Settings, roles: ["admin"] },

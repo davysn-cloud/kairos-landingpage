@@ -75,7 +75,7 @@ export function ValuesSection() {
               whileInView={{ y: 0, opacity: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.9, delay: 0.22, ease: EASE }}
-              className="text-4xl md:text-6xl font-display font-medium italic text-primary"
+              className="text-4xl md:text-6xl font-display font-medium text-secondary"
             >
               Pátria
             </motion.h2>
@@ -88,7 +88,7 @@ export function ValuesSection() {
               key={i}
               initial={{ opacity: 0, y: 16 }}
               whileInView={{ opacity: 1, y: 0 }}
-              whileHover={{ backgroundColor: "hsl(40 30% 94%)" }}
+              whileHover={{ backgroundColor: "#F0EFEA" }}
               viewport={{ once: true, margin: "-80px" }}
               transition={{
                 default: { duration: 0.6, delay: i * 0.06, ease: EASE },

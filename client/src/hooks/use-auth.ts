@@ -95,6 +95,21 @@ export function useAuth() {
     notify();
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    if (!state.token) return;
+    try {
+      const res = await fetch("/api/grafica/auth/me", {
+        headers: { Authorization: `Bearer ${state.token}` },
+      });
+      if (res.ok) {
+        const customer = await res.json();
+        saveState(state.token, customer);
+        setState({ token: state.token, customer });
+        notify();
+      }
+    } catch {}
+  }, [state.token]);
+
   return {
     token: state.token,
     customer: state.customer,
@@ -102,5 +117,6 @@ export function useAuth() {
     login,
     register,
     logout,
+    refreshUser,
   };
 }

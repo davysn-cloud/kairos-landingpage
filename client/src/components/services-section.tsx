@@ -138,7 +138,7 @@ export function ServicesSection() {
                 whileInView={{ y: 0, opacity: 1 }}
                 viewport={{ once: true, margin: "-40px" }}
                 transition={{ duration: 0.9, delay: 0.2, ease: EASE }}
-                className="swiss-title font-display font-bold italic text-muted-foreground"
+                className="swiss-title font-display font-bold text-muted-foreground"
               >
                 Livros. Produtos.
               </motion.h2>
@@ -174,7 +174,7 @@ export function ServicesSection() {
                 onMouseLeave={handleMouseLeave}
                 onClick={() => setExpandedIndex(isExpanded ? null : i)}
               >
-                {/* Top border that turns gold on hover */}
+                {/* Top border accent on hover */}
                 <motion.div
                   initial={{ scaleX: 0 }}
                   whileInView={{ scaleX: 1 }}

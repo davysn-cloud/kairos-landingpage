@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
 import { GraficaNavbar } from "@/components/grafica/grafica-navbar";
 import { CategoryCard } from "@/components/grafica/category-card";
@@ -29,14 +30,30 @@ export default function GraficaCatalogo() {
     queryKey: ["/api/grafica/categories"],
   });
 
+  const orgJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "Kairós Gráfica",
+    url: "https://kairos.com.br",
+    description: "Gráfica online com impressos de alta qualidade para sua marca.",
+  };
+
   return (
     <div className="min-h-screen bg-background font-sans">
+      <Helmet>
+        <title>Gráfica Kairós — Impressos de Alta Qualidade</title>
+        <meta name="description" content="Gráfica online com impressos de alta qualidade: cartões de visita, folders, panfletos, banners e mais. Configure e peça online." />
+        <meta property="og:title" content="Gráfica Kairós — Impressos de Alta Qualidade" />
+        <meta property="og:description" content="Gráfica online com impressos de alta qualidade para sua marca." />
+        <meta property="og:type" content="website" />
+        <script type="application/ld+json">{JSON.stringify(orgJsonLd)}</script>
+      </Helmet>
       <GraficaNavbar />
 
       {/* Hero */}
       <section className="relative overflow-hidden pt-16 pb-20 md:pt-24 md:pb-28">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/5" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,hsl(38_70%_45%/0.08),transparent_70%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgb(32_41_38/0.06),transparent_70%)]" />
 
         <div className="container mx-auto px-6 relative">
           <div className="max-w-3xl">
@@ -56,7 +73,7 @@ export default function GraficaCatalogo() {
               className="text-4xl md:text-6xl lg:text-7xl font-display font-bold leading-[0.95] tracking-tight"
             >
               Gráfica{" "}
-              <span className="italic text-primary">Kairós</span>
+              <span className="text-primary uppercase">Kairós</span>
             </motion.h1>
 
             <motion.p

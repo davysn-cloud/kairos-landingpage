@@ -119,7 +119,7 @@ export function Hero() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.3, ease: EASE }}
-              className="text-[hsl(38,60%,75%)] font-mono text-[10px] md:text-xs uppercase tracking-[0.4em] mb-8 block"
+              className="text-white/50 font-mono text-[10px] md:text-xs uppercase tracking-[0.4em] mb-8 block"
             >
               Casa Criativa — Cultura do Reino
             </motion.span>
@@ -129,7 +129,7 @@ export function Hero() {
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1.2, delay: 0.5, ease: EASE }}
-              className="text-5xl md:text-[130px] lg:text-[160px] font-display font-bold italic text-[hsl(40,25%,88%)] leading-[0.85] tracking-[-0.03em] mb-8 md:mb-10"
+              className="text-5xl md:text-[130px] lg:text-[160px] font-display font-bold uppercase text-white/90 leading-[0.85] tracking-[-0.02em] mb-8 md:mb-10"
             >
               Kairós
             </motion.h1>
@@ -139,11 +139,11 @@ export function Hero() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.9, ease: EASE }}
-              className="text-[hsl(40,20%,75%)] text-base md:text-xl font-light leading-relaxed max-w-lg mx-auto mb-14"
+              className="text-white/60 text-base md:text-xl font-light leading-relaxed max-w-lg mx-auto mb-14"
             >
               Dar forma ao que o céu comunica.
               <br />
-              <span className="text-[hsl(40,15%,65%)]">
+              <span className="text-white/40">
                 Transformando fé em expressão cultural.
               </span>
             </motion.p>
@@ -209,7 +209,7 @@ export function PurposeBlock() {
               whileInView={{ y: 0, opacity: 1 }}
               viewport={{ once: true, margin: "-40px" }}
               transition={{ duration: 0.9, delay: 0.22, ease: EASE }}
-              className="text-3xl md:text-5xl font-display font-medium leading-tight italic text-muted-foreground"
+              className="text-3xl md:text-5xl font-display font-medium leading-tight text-muted-foreground"
             >
               Tudo é convocação.
             </motion.h2>
@@ -238,7 +238,7 @@ export function PurposeBlock() {
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.8, delay: 0.75, ease: EASE }}
-              className="relative p-10 md:p-16 text-lg md:text-xl leading-relaxed text-white/80 font-display italic"
+              className="relative p-10 md:p-16 text-lg md:text-xl leading-relaxed text-white/80 font-display"
             >
               "Manifestar a Cultura do Reino na Terra através da criatividade,
               fazendo com que cada obra visual, escrita, sonora ou material não

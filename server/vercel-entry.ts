@@ -1,10 +1,18 @@
 import "dotenv/config";
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
+import helmet from "helmet";
 import { registerRoutes } from "../server/routes";
 import { createServer } from "http";
 
 const app = express();
+app.set("trust proxy", 1);
+
+// Security headers
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
 
 declare module "http" {
   interface IncomingMessage {
@@ -14,12 +22,13 @@ declare module "http" {
 
 app.use(
   express.json({
+    limit: "1mb",
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },
   }),
 );
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: false, limit: "1mb" }));
 
 const httpServer = createServer(app);
 await registerRoutes(httpServer, app);

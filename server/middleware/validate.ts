@@ -53,6 +53,7 @@ export const checkoutSchema = z.object({
     melhorEnvioId: z.number().optional(),
   }).optional(),
   notes: z.string().optional(),
+  couponCode: z.string().optional(),
 });
 
 export const updateStatusSchema = z.object({
@@ -69,4 +70,28 @@ export const registerSchema = z.object({
 export const loginSchema = z.object({
   email: z.string().email("E-mail inválido"),
   password: z.string().min(1, "Senha é obrigatória"),
+});
+
+export const createAddressSchema = z.object({
+  label: z.string().min(1, "Label é obrigatório"),
+  cep: z.string().regex(/^\d{8}$/, "CEP deve ter 8 dígitos"),
+  street: z.string().min(1, "Rua é obrigatória"),
+  number: z.string().min(1, "Número é obrigatório"),
+  complement: z.string().optional(),
+  neighborhood: z.string().min(1, "Bairro é obrigatório"),
+  city: z.string().min(1, "Cidade é obrigatória"),
+  state: z.string().length(2, "Estado deve ter 2 caracteres"),
+  isDefault: z.boolean().optional(),
+});
+
+export const updateAddressSchema = createAddressSchema.partial();
+
+export const updateProfileSchema = z.object({
+  name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").optional(),
+  phone: z.string().optional(),
+});
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Senha atual é obrigatória"),
+  newPassword: z.string().min(6, "Nova senha deve ter pelo menos 6 caracteres"),
 });

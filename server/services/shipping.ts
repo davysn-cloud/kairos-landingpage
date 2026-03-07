@@ -425,6 +425,58 @@ export async function getLabelUrl(
   return { url: data.url };
 }
 
+// ── Tracking Info ──
+
+export interface TrackingEvent {
+  status: string;
+  date: string;
+  location: string;
+  description: string;
+}
+
+/**
+ * Fetches tracking info from Melhor Envio API.
+ * Returns an array of tracking events, or empty array on failure.
+ */
+export async function getTrackingInfo(trackingCode: string): Promise<TrackingEvent[]> {
+  if (!MELHOR_ENVIO_TOKEN || !trackingCode) {
+    return [];
+  }
+
+  try {
+    const response = await fetch(`${BASE_URL}/api/v2/me/shipment/tracking`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${MELHOR_ENVIO_TOKEN}`,
+        "User-Agent": "Kairos Grafica (contato@kairos.com.br)",
+      },
+      body: JSON.stringify({ orders: [trackingCode] }),
+    });
+
+    if (!response.ok) {
+      console.error(`[Tracking] API error ${response.status}`);
+      return [];
+    }
+
+    const data = await response.json() as Record<string, any>;
+    // ME returns { "trackingCode": { tracking: [...] } }
+    const trackingData = data[trackingCode]?.tracking;
+    if (!Array.isArray(trackingData)) return [];
+
+    return trackingData.map((evt: any) => ({
+      status: evt.status || "",
+      date: evt.date || evt.datetime || "",
+      location: evt.locale || evt.location || "",
+      description: evt.description || evt.message || "",
+    }));
+  } catch (err: any) {
+    console.error("[Tracking] Failed to fetch tracking info:", err?.message || err);
+    return [];
+  }
+}
+
 // ── Auto Label Generation (triggered after payment approval) ──
 
 /**

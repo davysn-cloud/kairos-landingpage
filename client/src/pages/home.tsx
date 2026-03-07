@@ -71,37 +71,40 @@ export default function Home() {
                   whileInView={{ x: 0, opacity: 1 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.6, ease: EASE }}
-                  className="text-primary font-mono text-xs uppercase tracking-[0.3em] block"
+                  className="text-white font-mono text-xs uppercase tracking-[0.3em] block"
+                  style={{ mixBlendMode: "difference" }}
                 >
                   Sobre a Kairós
                 </motion.span>
               </div>
 
               {/* Swiss Style giant heading — GSAP parallax */}
-              <div className="overflow-hidden mb-6">
+              <div className="mb-6">
                 <motion.h3
                   ref={sobreHeadingRef}
-                  initial={{ y: 60, opacity: 0 }}
+                  initial={{ y: 40, opacity: 0 }}
                   whileInView={{ y: 0, opacity: 1 }}
                   viewport={{ once: true }}
                   transition={{ duration: 1.1, delay: 0.1, ease: EASE }}
-                  className="swiss-title gsap-parallax font-display font-bold text-[hsl(35,25%,30%)]"
+                  className="swiss-title gsap-parallax font-display font-bold text-white"
+                  style={{ mixBlendMode: "difference" }}
                 >
                   Uma casa criativa
                   <br />
-                  <span className="italic text-[hsl(35,20%,45%)]">dedicada ao Reino.</span>
+                  <span className="text-white/70">dedicada ao Reino.</span>
                 </motion.h3>
               </div>
 
               {/* Body — also parallaxed, slower */}
-              <div className="overflow-hidden max-w-3xl">
+              <div className="max-w-3xl">
                 <motion.p
                   ref={sobreSubRef}
-                  initial={{ y: 40, opacity: 0 }}
+                  initial={{ y: 30, opacity: 0 }}
                   whileInView={{ y: 0, opacity: 1 }}
                   viewport={{ once: true }}
                   transition={{ duration: 1.0, delay: 0.3, ease: EASE }}
-                  className="text-xl md:text-2xl font-display font-medium leading-relaxed text-muted-foreground gsap-parallax"
+                  className="text-xl md:text-2xl font-display font-medium leading-relaxed text-white/80 gsap-parallax"
+                  style={{ mixBlendMode: "difference" }}
                 >
                   Unimos moda, editorial, produção cultural, audiovisual e
                   branding em um mesmo movimento: dar forma ao que o céu

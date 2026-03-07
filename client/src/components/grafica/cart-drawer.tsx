@@ -89,7 +89,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                   >
                     <div className="flex gap-3">
                       <div className="w-14 h-14 rounded-lg bg-muted/30 flex items-center justify-center shrink-0">
-                        <span className="text-xl font-display font-bold italic text-primary/20">
+                        <span className="text-xl font-display font-bold uppercase text-foreground/15">
                           {item.product?.name?.charAt(0) ?? "P"}
                         </span>
                       </div>

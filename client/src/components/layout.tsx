@@ -83,39 +83,15 @@ export function Navbar() {
     movePillTo(key);
   };
 
-  const LogoSvg = () => (
-    <svg
-      width="72"
-      height="24"
-      viewBox="0 0 72 24"
-      fill="none"
-      className="overflow-visible"
-      aria-label="Kairós"
-    >
-      <motion.text
-        x="0"
-        y="19"
-        fontFamily="'Playfair Display', serif"
-        fontSize="20"
-        fontWeight="700"
-        fontStyle="italic"
-        fill="white"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.01, delay: 0.4 }}
-      >
-        KAIRÓS
-      </motion.text>
-      <motion.line
-        x1="0" y1="22" x2="72" y2="22"
-        stroke="hsl(38 70% 45%)"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        initial={{ pathLength: 0, opacity: 0 }}
-        animate={{ pathLength: 1, opacity: 1 }}
-        transition={{ duration: 1.2, delay: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
-      />
-    </svg>
+  const Logo = () => (
+    <motion.img
+      src="/logos/logo-tipografia-branco.png"
+      alt="Kairós"
+      className="h-5 w-auto"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4, delay: 0.3 }}
+    />
   );
 
   return (
@@ -154,7 +130,7 @@ export function Navbar() {
               onMouseEnter={() => handleEnter("logo")}
               className="px-5 py-2.5 flex items-center cursor-pointer relative z-10"
             >
-              <LogoSvg />
+              <Logo />
             </div>
           </Link>
 
@@ -273,7 +249,7 @@ export function Navbar() {
         >
           <Link href="/">
             <div className="flex items-center cursor-pointer">
-              <LogoSvg />
+              <Logo />
             </div>
           </Link>
 
@@ -329,14 +305,14 @@ export function Navbar() {
                   >
                     {link.href ? (
                       <Link href={link.href} onClick={() => setMobileOpen(false)}>
-                        <div className="w-full text-left py-5 text-2xl font-display font-bold italic text-white/80 hover:text-white border-b border-white/[0.07] transition-colors active:text-primary">
+                        <div className="w-full text-left py-5 text-2xl font-display font-bold uppercase tracking-wide text-white/80 hover:text-white border-b border-white/[0.07] transition-colors active:text-primary">
                           {link.label}
                         </div>
                       </Link>
                     ) : (
                       <button
                         onClick={() => scrollTo(link.id!)}
-                        className="w-full text-left py-5 text-2xl font-display font-bold italic text-white/80 hover:text-white border-b border-white/[0.07] transition-colors active:text-primary"
+                        className="w-full text-left py-5 text-2xl font-display font-bold uppercase tracking-wide text-white/80 hover:text-white border-b border-white/[0.07] transition-colors active:text-primary"
                       >
                         {link.label}
                       </button>
@@ -385,15 +361,14 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
           {/* Brand block */}
           <div className="space-y-6 md:col-span-2">
-            <motion.h3
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.8, ease: FOOTER_EASE }}
-              className="text-3xl font-display font-bold italic"
             >
-              Kairós
-            </motion.h3>
+              <img src="/logos/logo-tipografia-branco.png" alt="Kairós" className="h-7 w-auto" />
+            </motion.div>
             <motion.p
               initial={{ opacity: 0, y: 16 }}
               whileInView={{ opacity: 1, y: 0 }}
