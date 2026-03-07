@@ -1,13 +1,16 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { HelmetProvider } from "react-helmet-async";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import { useLenis } from "@/hooks/use-lenis";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAnalyticsInit, trackPageView } from "@/hooks/use-analytics";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 const GraficaCatalogo = lazy(() => import("./pages/grafica/catalogo"));
 const GraficaCategoria = lazy(() => import("./pages/grafica/categoria"));
@@ -17,6 +20,9 @@ const GraficaCheckout = lazy(() => import("./pages/grafica/checkout"));
 const GraficaPedido = lazy(() => import("./pages/grafica/pedido"));
 const GraficaConta = lazy(() => import("./pages/grafica/conta"));
 const GraficaLogin = lazy(() => import("./pages/grafica/login"));
+const GraficaFAQ = lazy(() => import("./pages/grafica/faq"));
+const GraficaTermos = lazy(() => import("./pages/grafica/termos"));
+const GraficaPrivacidade = lazy(() => import("./pages/grafica/privacidade"));
 const AdminLogin = lazy(() => import("./pages/admin/login"));
 const AdminLayout = lazy(() => import("./pages/admin/layout"));
 
@@ -36,76 +42,132 @@ function GraficaLoading() {
   );
 }
 
+function Analytics() {
+  const [location] = useLocation();
+  useEffect(() => {
+    // Skip admin routes
+    if (!location.startsWith("/admin")) {
+      trackPageView(location);
+    }
+  }, [location]);
+  return null;
+}
+
 function Router() {
   return (
+    <>
+    <Analytics />
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/grafica">
-        <Suspense fallback={<GraficaLoading />}>
-          <GraficaCatalogo />
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={<GraficaLoading />}>
+            <GraficaCatalogo />
+          </Suspense>
+        </ErrorBoundary>
       </Route>
       <Route path="/grafica/produto/:slug">
         {(params) => (
-          <Suspense fallback={<GraficaLoading />}>
-            <GraficaProduto slug={params.slug} />
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<GraficaLoading />}>
+              <GraficaProduto slug={params.slug} />
+            </Suspense>
+          </ErrorBoundary>
         )}
       </Route>
       <Route path="/grafica/carrinho">
-        <Suspense fallback={<GraficaLoading />}>
-          <GraficaCarrinho />
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={<GraficaLoading />}>
+            <GraficaCarrinho />
+          </Suspense>
+        </ErrorBoundary>
       </Route>
       <Route path="/grafica/checkout">
-        <Suspense fallback={<GraficaLoading />}>
-          <GraficaCheckout />
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={<GraficaLoading />}>
+            <GraficaCheckout />
+          </Suspense>
+        </ErrorBoundary>
       </Route>
       <Route path="/grafica/pedido/:id">
         {(params) => (
-          <Suspense fallback={<GraficaLoading />}>
-            <GraficaPedido id={params.id} />
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<GraficaLoading />}>
+              <GraficaPedido id={params.id} />
+            </Suspense>
+          </ErrorBoundary>
         )}
       </Route>
       <Route path="/grafica/login">
-        <Suspense fallback={<GraficaLoading />}>
-          <GraficaLogin />
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={<GraficaLoading />}>
+            <GraficaLogin />
+          </Suspense>
+        </ErrorBoundary>
       </Route>
       <Route path="/grafica/conta">
-        <Suspense fallback={<GraficaLoading />}>
-          <GraficaConta />
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={<GraficaLoading />}>
+            <GraficaConta />
+          </Suspense>
+        </ErrorBoundary>
+      </Route>
+      <Route path="/grafica/faq">
+        <ErrorBoundary>
+          <Suspense fallback={<GraficaLoading />}>
+            <GraficaFAQ />
+          </Suspense>
+        </ErrorBoundary>
+      </Route>
+      <Route path="/grafica/termos">
+        <ErrorBoundary>
+          <Suspense fallback={<GraficaLoading />}>
+            <GraficaTermos />
+          </Suspense>
+        </ErrorBoundary>
+      </Route>
+      <Route path="/grafica/privacidade">
+        <ErrorBoundary>
+          <Suspense fallback={<GraficaLoading />}>
+            <GraficaPrivacidade />
+          </Suspense>
+        </ErrorBoundary>
       </Route>
       <Route path="/admin" nest>
-        <Suspense fallback={<GraficaLoading />}>
-          <AdminLayout />
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={<GraficaLoading />}>
+            <AdminLayout />
+          </Suspense>
+        </ErrorBoundary>
       </Route>
       <Route path="/grafica/:slug">
         {(params) => (
-          <Suspense fallback={<GraficaLoading />}>
-            <GraficaCategoria slug={params.slug} />
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<GraficaLoading />}>
+              <GraficaCategoria slug={params.slug} />
+            </Suspense>
+          </ErrorBoundary>
         )}
       </Route>
       <Route component={NotFound} />
     </Switch>
+    </>
   );
 }
 
 function App() {
   useLenis();
+  useAnalyticsInit();
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <HelmetProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </QueryClientProvider>
+    </HelmetProvider>
   );
 }
 

@@ -10,6 +10,11 @@ import {
   autoGenerateLabel,
 } from "../services/shipping";
 import { z } from "zod";
+import { authLimiter } from "../middleware/rate-limit";
+import { triggerOrderEmail } from "../services/email";
+import { getSignedArtUrl, uploadProductImage } from "../services/storage-client";
+import { createRefund } from "../services/mercadopago";
+import multer from "multer";
 
 // Helper to safely extract string from Express params/query (Express 5 returns string | string[])
 function str(val: string | string[] | undefined): string {
@@ -118,6 +123,19 @@ const updateOrderStatusSchema = z.object({
   status: z.enum(["pending", "confirmed", "production", "shipped", "delivered", "cancelled"]),
 });
 
+const createCouponSchema = z.object({
+  code: z.string().min(1),
+  discountType: z.enum(["percentage", "fixed"]),
+  discountValue: z.string().regex(/^\d+(\.\d{1,2})?$/),
+  minOrderAmount: z.string().regex(/^\d+(\.\d{1,2})?$/).default("0"),
+  maxUses: z.number().int().positive().nullable().optional(),
+  validFrom: z.string().min(1),
+  validTo: z.string().min(1),
+  active: z.boolean().default(true),
+});
+
+const updateCouponSchema = createCouponSchema.partial();
+
 const updateTrackingSchema = z.object({
   trackingCode: z.string().min(1),
 });
@@ -125,6 +143,10 @@ const updateTrackingSchema = z.object({
 const updateArtStatusSchema = z.object({
   orderItemId: z.string().min(1),
   artStatus: z.enum(["pending", "uploaded", "approved", "rejected"]),
+});
+
+const createOrderNoteSchema = z.object({
+  content: z.string().min(1).max(5000),
 });
 
 const updateSettingsSchema = z.object({
@@ -142,10 +164,41 @@ async function audit(adminUserId: string, action: string, entityType: string, en
 
 export function registerAdminRoutes(app: Express) {
   // ══════════════════════════════════════════
+  // IMAGE UPLOAD (admin only)
+  // ══════════════════════════════════════════
+
+  const imageUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+    fileFilter: (_req, file, cb) => {
+      if (file.mimetype.startsWith("image/")) {
+        cb(null, true);
+      } else {
+        cb(new Error("Apenas imagens são permitidas"));
+      }
+    },
+  });
+
+  app.post("/api/admin/upload-image", requireAdmin, imageUpload.single("file"), async (req, res) => {
+    if (!req.file) {
+      res.status(400).json({ message: "Nenhuma imagem enviada" });
+      return;
+    }
+
+    try {
+      const url = await uploadProductImage(req.file.buffer, req.file.originalname, req.file.mimetype);
+      res.json({ url });
+    } catch (err: any) {
+      console.error("[Upload] Product image error:", err?.message || err);
+      res.status(500).json({ message: err?.message || "Erro ao fazer upload da imagem" });
+    }
+  });
+
+  // ══════════════════════════════════════════
   // AUTH (no middleware required)
   // ══════════════════════════════════════════
 
-  app.post("/api/admin/auth/login", validate(adminLoginSchema), async (req, res) => {
+  app.post("/api/admin/auth/login", authLimiter, validate(adminLoginSchema), async (req, res) => {
     const { email, password } = req.body;
 
     const admin = await storage.getAdminUserByEmail(email);
@@ -279,16 +332,35 @@ export function registerAdminRoutes(app: Express) {
 
   app.patch("/api/admin/orders/:id/status", requireRole("admin", "operador"), validate(updateOrderStatusSchema), async (req, res) => {
     const orderId = str(req.params.id);
+    const order = await storage.getOrder(orderId);
+    if (!order) {
+      res.status(404).json({ message: "Pedido não encontrado" });
+      return;
+    }
+
     const updated = await storage.updateOrderStatus(orderId, req.body.status);
     if (!updated) {
       res.status(404).json({ message: "Pedido não encontrado" });
       return;
     }
     await audit(req.adminUserId!, "update_status", "order", orderId, { status: req.body.status });
+    triggerOrderEmail(orderId, req.body.status).catch(() => {});
 
     // Auto-generate shipping label when moving to confirmed/production and no label exists yet
     if (["confirmed", "production"].includes(req.body.status) && !updated.shippingLabelUrl) {
       autoGenerateLabel(orderId).catch(() => {});
+    }
+
+    // Auto-refund via MercadoPago when cancelling a paid order
+    if (req.body.status === "cancelled" && order.paymentStatus === "approved" && order.paymentExternalId) {
+      createRefund(order.paymentExternalId)
+        .then((result) => {
+          console.log(`[Refund] Order ${orderId} refunded: ${JSON.stringify(result)}`);
+          return storage.updatePaymentStatus(orderId, "refunded");
+        })
+        .catch((err) => {
+          console.error(`[Refund] Failed for order ${orderId}:`, err?.message || err);
+        });
     }
 
     res.json(updated);
@@ -301,6 +373,9 @@ export function registerAdminRoutes(app: Express) {
       return;
     }
     await audit(req.adminUserId!, "update_tracking", "order", str(req.params.id), { trackingCode: req.body.trackingCode });
+    if (updated.status === "shipped") {
+      triggerOrderEmail(str(req.params.id), "shipped", req.body.trackingCode).catch(() => {});
+    }
     res.json(updated);
   });
 
@@ -313,6 +388,36 @@ export function registerAdminRoutes(app: Express) {
     }
     await audit(req.adminUserId!, "update_art_status", "order_item", orderItemId, { artStatus });
     res.json(item);
+  });
+
+  app.get("/api/admin/orders/:id/art/:itemId/download", requireRole("admin", "operador"), async (req, res) => {
+    const orderItem = await storage.getOrderItemById(str(req.params.itemId));
+    if (!orderItem || orderItem.orderId !== str(req.params.id)) {
+      res.status(404).json({ message: "Item não encontrado" });
+      return;
+    }
+
+    if (!orderItem.artFileUrl) {
+      res.status(404).json({ message: "Nenhum arquivo de arte enviado" });
+      return;
+    }
+
+    try {
+      // Extract the storage path from the public URL
+      const url = new URL(orderItem.artFileUrl);
+      const pathMatch = url.pathname.match(/\/object\/public\/art-files\/(.+)$/);
+      if (!pathMatch) {
+        // If URL isn't a Supabase URL, redirect directly
+        res.redirect(orderItem.artFileUrl);
+        return;
+      }
+      const signedUrl = await getSignedArtUrl(pathMatch[1]);
+      res.redirect(signedUrl);
+    } catch (err: any) {
+      console.error("[Admin] Art download error:", err?.message || err);
+      // Fallback: redirect to the stored URL
+      res.redirect(orderItem.artFileUrl);
+    }
   });
 
   app.post("/api/admin/orders/:id/generate-label", requireRole("admin", "operador"), async (req, res) => {
@@ -363,6 +468,23 @@ export function registerAdminRoutes(app: Express) {
     } catch (err: any) {
       res.status(500).json({ message: err?.message || "Erro ao gerar etiqueta" });
     }
+  });
+
+  // ── Order Notes ──
+
+  app.get("/api/admin/orders/:id/notes", requireRole("admin", "operador", "financeiro"), async (req, res) => {
+    const notes = await storage.getOrderNotes(str(req.params.id));
+    res.json(notes);
+  });
+
+  app.post("/api/admin/orders/:id/notes", requireRole("admin", "operador"), validate(createOrderNoteSchema), async (req, res) => {
+    const admin = await storage.getAdminUser(req.adminUserId!);
+    const note = await storage.createOrderNote({
+      orderId: str(req.params.id),
+      authorName: admin?.displayName || "Admin",
+      content: req.body.content,
+    });
+    res.status(201).json(note);
   });
 
   // ══════════════════════════════════════════
@@ -644,6 +766,46 @@ export function registerAdminRoutes(app: Express) {
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader("Content-Disposition", `attachment; filename=relatorio-${dateFrom.toISOString().split("T")[0]}-${dateTo.toISOString().split("T")[0]}.csv`);
     res.send(csvRows.join("\n"));
+  });
+
+  // ══════════════════════════════════════════
+  // COUPONS (admin only)
+  // ══════════════════════════════════════════
+
+  app.get("/api/admin/coupons", requireRole("admin"), async (_req, res) => {
+    const data = await storage.getAllCoupons();
+    res.json(data);
+  });
+
+  app.post("/api/admin/coupons", requireRole("admin"), validate(createCouponSchema), async (req, res) => {
+    const data = {
+      ...req.body,
+      validFrom: new Date(req.body.validFrom),
+      validTo: new Date(req.body.validTo),
+      maxUses: req.body.maxUses ?? null,
+    };
+    const coupon = await storage.createCoupon(data);
+    await audit(req.adminUserId!, "create", "coupon", coupon.id);
+    res.status(201).json(coupon);
+  });
+
+  app.patch("/api/admin/coupons/:id", requireRole("admin"), validate(updateCouponSchema), async (req, res) => {
+    const data: Record<string, any> = { ...req.body };
+    if (data.validFrom) data.validFrom = new Date(data.validFrom);
+    if (data.validTo) data.validTo = new Date(data.validTo);
+    const coupon = await storage.updateCoupon(str(req.params.id), data);
+    if (!coupon) {
+      res.status(404).json({ message: "Cupom não encontrado" });
+      return;
+    }
+    await audit(req.adminUserId!, "update", "coupon", str(req.params.id));
+    res.json(coupon);
+  });
+
+  app.delete("/api/admin/coupons/:id", requireRole("admin"), async (req, res) => {
+    await storage.deleteCoupon(str(req.params.id));
+    await audit(req.adminUserId!, "delete", "coupon", str(req.params.id));
+    res.status(204).send();
   });
 
   // ══════════════════════════════════════════

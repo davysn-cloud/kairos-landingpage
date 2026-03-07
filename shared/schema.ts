@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, numeric, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, numeric, jsonb, timestamp, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -208,6 +208,8 @@ export const orders = pgTable("orders", {
   shippingAddress: jsonb("shipping_address").$type<{ cep: string; street: string; number: string; complement?: string; neighborhood: string; city: string; state: string }>(),
   shippingServiceId: integer("shipping_service_id"),
   shippingLabelUrl: text("shipping_label_url"),
+  couponCode: text("coupon_code"),
+  discountAmount: numeric("discount_amount", { precision: 10, scale: 2 }).notNull().default("0"),
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -236,6 +238,25 @@ export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: t
 export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;
 export type OrderItem = typeof orderItems.$inferSelect;
 
+// ── Gráfica: Coupons ──
+export const coupons = pgTable("coupons", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: text("code").notNull().unique(),
+  discountType: text("discount_type").notNull(), // "percentage" | "fixed"
+  discountValue: numeric("discount_value", { precision: 10, scale: 2 }).notNull(),
+  minOrderAmount: numeric("min_order_amount", { precision: 10, scale: 2 }).notNull().default("0"),
+  maxUses: integer("max_uses"), // null = unlimited
+  currentUses: integer("current_uses").notNull().default(0),
+  validFrom: timestamp("valid_from").notNull(),
+  validTo: timestamp("valid_to").notNull(),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertCouponSchema = createInsertSchema(coupons).omit({ id: true, currentUses: true, createdAt: true });
+export type InsertCoupon = z.infer<typeof insertCouponSchema>;
+export type Coupon = typeof coupons.$inferSelect;
+
 // ── Gráfica: Cart Items ──
 export const cartItems = pgTable("cart_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -252,3 +273,16 @@ export const cartItems = pgTable("cart_items", {
 export const insertCartItemSchema = createInsertSchema(cartItems).omit({ id: true, createdAt: true });
 export type InsertCartItem = z.infer<typeof insertCartItemSchema>;
 export type CartItem = typeof cartItems.$inferSelect;
+
+// ── Order Notes (admin internal notes) ──
+export const orderNotes = pgTable("order_notes", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  orderId: varchar("order_id").notNull().references(() => orders.id),
+  authorName: text("author_name").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertOrderNoteSchema = createInsertSchema(orderNotes).omit({ id: true, createdAt: true });
+export type InsertOrderNote = z.infer<typeof insertOrderNoteSchema>;
+export type OrderNote = typeof orderNotes.$inferSelect;

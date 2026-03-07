@@ -9,10 +9,13 @@ import {
   type AdminUser, type InsertAdminUser,
   type AuditLog, type InsertAuditLog,
   type StoreSetting,
+  type Coupon, type InsertCoupon,
+  type Address, type InsertAddress,
+  type OrderNote, type InsertOrderNote,
   users, categories, products, productVariants,
   paperTypes, finishings, priceRules,
   cartItems, orders, orderItems, customers,
-  adminUsers, auditLog, storeSettings,
+  adminUsers, auditLog, storeSettings, coupons, addresses, orderNotes,
   type InsertCategory, type InsertProduct, type InsertProductVariant,
   type InsertPaperType, type InsertFinishing, type InsertPriceRule,
 } from "../shared/schema";
@@ -34,6 +37,8 @@ export interface IStorage {
   getPaperTypes(): Promise<PaperType[]>;
   getFinishings(): Promise<Finishing[]>;
   getPriceRules(productId: string): Promise<PriceRule[]>;
+  getProductCountByCategory(categoryId: string): Promise<number>;
+  searchProducts(query: string, limit?: number): Promise<Product[]>;
 
   // Cart
   getCartItems(sessionId: string): Promise<CartItem[]>;
@@ -46,6 +51,14 @@ export interface IStorage {
   createCustomer(data: InsertCustomer): Promise<Customer>;
   getCustomerByEmail(email: string): Promise<Customer | undefined>;
   getCustomer(id: string): Promise<Customer | undefined>;
+  updateCustomer(id: string, data: Partial<Pick<Customer, "name" | "phone" | "passwordHash">>): Promise<Customer | undefined>;
+
+  // Addresses
+  getAddressesByCustomer(customerId: string): Promise<Address[]>;
+  getAddress(id: string): Promise<Address | undefined>;
+  createAddress(data: InsertAddress): Promise<Address>;
+  updateAddress(id: string, data: Partial<InsertAddress>): Promise<Address | undefined>;
+  deleteAddress(id: string): Promise<void>;
 
   // Orders
   createOrder(order: InsertOrder): Promise<Order>;
@@ -56,6 +69,7 @@ export interface IStorage {
   updatePaymentStatus(id: string, paymentStatus: string, externalId?: string): Promise<Order | undefined>;
   addOrderItems(items: InsertOrderItem[]): Promise<OrderItem[]>;
   getOrderItems(orderId: string): Promise<OrderItem[]>;
+  getOrderItemById(id: string): Promise<OrderItem | undefined>;
   updateOrderItemArt(id: string, artFileUrl: string, artStatus: string): Promise<OrderItem | undefined>;
 
   // Admin Users
@@ -121,6 +135,18 @@ export interface IStorage {
 
   // Admin: Order tracking
   updateOrderTracking(id: string, trackingCode: string): Promise<Order | undefined>;
+
+  // Coupons
+  getCouponByCode(code: string): Promise<Coupon | undefined>;
+  incrementCouponUses(id: string): Promise<void>;
+  createCoupon(data: InsertCoupon): Promise<Coupon>;
+  updateCoupon(id: string, data: Partial<InsertCoupon>): Promise<Coupon | undefined>;
+  deleteCoupon(id: string): Promise<void>;
+  getAllCoupons(): Promise<Coupon[]>;
+
+  // Order Notes
+  getOrderNotes(orderId: string): Promise<OrderNote[]>;
+  createOrderNote(data: InsertOrderNote): Promise<OrderNote>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -203,6 +229,24 @@ export class DatabaseStorage implements IStorage {
       .orderBy(asc(priceRules.minQty));
   }
 
+  async getProductCountByCategory(categoryId: string): Promise<number> {
+    const [result] = await db.select({ count: count() }).from(products)
+      .where(and(eq(products.categoryId, categoryId), eq(products.active, true)));
+    return Number(result?.count || 0);
+  }
+
+  async searchProducts(query: string, limit = 20): Promise<Product[]> {
+    return db.select().from(products)
+      .where(and(
+        eq(products.active, true),
+        or(
+          ilike(products.name, `%${query}%`),
+          ilike(products.description, `%${query}%`),
+        ),
+      ))
+      .limit(limit);
+  }
+
   // ── Customers ──
   async createCustomer(data: InsertCustomer): Promise<Customer> {
     const [customer] = await db.insert(customers).values(data).returning();
@@ -217,6 +261,46 @@ export class DatabaseStorage implements IStorage {
   async getCustomer(id: string): Promise<Customer | undefined> {
     const [customer] = await db.select().from(customers).where(eq(customers.id, id));
     return customer;
+  }
+
+  async updateCustomer(id: string, data: Partial<Pick<Customer, "name" | "phone" | "passwordHash">>): Promise<Customer | undefined> {
+    const [updated] = await db.update(customers).set(data).where(eq(customers.id, id)).returning();
+    return updated;
+  }
+
+  // ── Addresses ──
+  async getAddressesByCustomer(customerId: string): Promise<Address[]> {
+    return db.select().from(addresses).where(eq(addresses.customerId, customerId));
+  }
+
+  async getAddress(id: string): Promise<Address | undefined> {
+    const [addr] = await db.select().from(addresses).where(eq(addresses.id, id));
+    return addr;
+  }
+
+  async createAddress(data: InsertAddress): Promise<Address> {
+    if (data.isDefault) {
+      await db.update(addresses).set({ isDefault: false })
+        .where(eq(addresses.customerId, data.customerId));
+    }
+    const [addr] = await db.insert(addresses).values(data).returning();
+    return addr;
+  }
+
+  async updateAddress(id: string, data: Partial<InsertAddress>): Promise<Address | undefined> {
+    if (data.isDefault) {
+      const existing = await this.getAddress(id);
+      if (existing) {
+        await db.update(addresses).set({ isDefault: false })
+          .where(eq(addresses.customerId, existing.customerId));
+      }
+    }
+    const [updated] = await db.update(addresses).set(data).where(eq(addresses.id, id)).returning();
+    return updated;
+  }
+
+  async deleteAddress(id: string): Promise<void> {
+    await db.delete(addresses).where(eq(addresses.id, id));
   }
 
   // ── Cart ──
@@ -305,6 +389,11 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(orderItems)
       .where(eq(orderItems.orderId, orderId));
+  }
+
+  async getOrderItemById(id: string): Promise<OrderItem | undefined> {
+    const [item] = await db.select().from(orderItems).where(eq(orderItems.id, id));
+    return item;
   }
 
   async updateOrderItemArt(id: string, artFileUrl: string, artStatus: string): Promise<OrderItem | undefined> {
@@ -689,6 +778,48 @@ export class DatabaseStorage implements IStorage {
       .where(eq(orders.id, id))
       .returning();
     return updated;
+  }
+
+  // ── Coupons ──
+  async getCouponByCode(code: string): Promise<Coupon | undefined> {
+    const [coupon] = await db.select().from(coupons).where(eq(coupons.code, code.toUpperCase()));
+    return coupon;
+  }
+
+  async incrementCouponUses(id: string): Promise<void> {
+    await db.update(coupons).set({ currentUses: sql`${coupons.currentUses} + 1` }).where(eq(coupons.id, id));
+  }
+
+  async createCoupon(data: InsertCoupon): Promise<Coupon> {
+    const [coupon] = await db.insert(coupons).values({ ...data, code: data.code.toUpperCase() }).returning();
+    return coupon;
+  }
+
+  async updateCoupon(id: string, data: Partial<InsertCoupon>): Promise<Coupon | undefined> {
+    const updateData = { ...data };
+    if (updateData.code) updateData.code = updateData.code.toUpperCase();
+    const [coupon] = await db.update(coupons).set(updateData).where(eq(coupons.id, id)).returning();
+    return coupon;
+  }
+
+  async deleteCoupon(id: string): Promise<void> {
+    await db.delete(coupons).where(eq(coupons.id, id));
+  }
+
+  async getAllCoupons(): Promise<Coupon[]> {
+    return db.select().from(coupons).orderBy(desc(coupons.createdAt));
+  }
+
+  // ── Order Notes ──
+  async getOrderNotes(orderId: string): Promise<OrderNote[]> {
+    return db.select().from(orderNotes)
+      .where(eq(orderNotes.orderId, orderId))
+      .orderBy(desc(orderNotes.createdAt));
+  }
+
+  async createOrderNote(data: InsertOrderNote): Promise<OrderNote> {
+    const [note] = await db.insert(orderNotes).values(data).returning();
+    return note;
   }
 }
 

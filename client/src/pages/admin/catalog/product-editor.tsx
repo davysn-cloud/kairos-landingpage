@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Plus, Trash2, Save } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Upload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Category, Product, ProductVariant, PaperType, Finishing, PriceRule } from "../../../../../shared/schema";
 
@@ -133,6 +133,32 @@ export default function ProductEditor({ id }: { id?: string }) {
     },
   });
 
+  const [uploading, setUploading] = useState(false);
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const token = localStorage.getItem("admin_token");
+      const res = await fetch("/api/admin/upload-image", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (!res.ok) throw new Error((await res.json()).message || "Erro no upload");
+      const { url } = await res.json();
+      setForm((f) => ({ ...f, imageUrl: url }));
+      toast.success("Imagem enviada");
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao enviar imagem");
+    } finally {
+      setUploading(false);
+    }
+  }
+
   const paperMap = new Map((paperTypes || []).map(p => [p.id, p.name]));
   const finishingMap = new Map((finishingsList || []).map(f => [f.id, f.name]));
 
@@ -190,8 +216,20 @@ export default function ProductEditor({ id }: { id?: string }) {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>URL da imagem</Label>
-                    <Input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} />
+                    <Label>Imagem do Produto</Label>
+                    <div className="flex items-center gap-3">
+                      {form.imageUrl && (
+                        <img src={form.imageUrl} alt="Preview" className="h-16 w-16 object-cover rounded border" />
+                      )}
+                      <label className="cursor-pointer">
+                        <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploading} />
+                        <span className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-accent transition-colors">
+                          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                          {uploading ? "Enviando..." : "Upload"}
+                        </span>
+                      </label>
+                    </div>
+                    <Input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} placeholder="Ou cole a URL da imagem" className="text-xs" />
                   </div>
                   <div className="space-y-2">
                     <Label>Quantidade mínima</Label>

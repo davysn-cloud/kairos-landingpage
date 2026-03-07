@@ -1,7 +1,9 @@
 import { useState, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
 import { ShoppingCart, Check, ArrowLeft } from "lucide-react";
+import { trackAddToCart } from "@/hooks/use-analytics";
 import { Link } from "wouter";
 import { GraficaNavbar } from "@/components/grafica/grafica-navbar";
 import { QuantitySelector } from "@/components/grafica/quantity-selector";
@@ -101,13 +103,45 @@ export default function GraficaProduto({ slug }: GraficaProdutoProps) {
         onSuccess: () => {
           setAddedToCart(true);
           setTimeout(() => setAddedToCart(false), 2000);
+          trackAddToCart(product!.id, price!.unitPrice * selectedQuantity);
         },
       },
     );
   }, [product, price, selectedPaper, selectedVariant, selectedQuantity, selectedColors, selectedFinishingObjects, addItem]);
 
+  const seoTitle = product?.seoTitle || product?.name;
+  const seoDescription = product?.seoDescription || product?.description || `${product?.name} — Gráfica Kairós`;
+
+  const jsonLd = product ? {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    description: product.description || product.name,
+    image: product.imageUrl || undefined,
+    offers: {
+      "@type": "AggregateOffer",
+      priceCurrency: "BRL",
+      lowPrice: product.priceRange.min,
+      highPrice: product.priceRange.max,
+      availability: "https://schema.org/InStock",
+    },
+  } : null;
+
   return (
     <div className="min-h-screen bg-background font-sans">
+      {product && (
+        <Helmet>
+          <title>{seoTitle} | Kairós Gráfica</title>
+          <meta name="description" content={seoDescription!} />
+          <meta property="og:title" content={`${seoTitle} | Kairós Gráfica`} />
+          <meta property="og:description" content={seoDescription!} />
+          {product.imageUrl && <meta property="og:image" content={product.imageUrl} />}
+          <meta property="og:type" content="product" />
+          {jsonLd && (
+            <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
+          )}
+        </Helmet>
+      )}
       <GraficaNavbar
         breadcrumbs={
           product
@@ -178,12 +212,22 @@ export default function GraficaProduto({ slug }: GraficaProdutoProps) {
                 transition={{ duration: 0.7, delay: 0.1, ease: EASE }}
                 className="aspect-[16/9] bg-muted/30 rounded-xl relative overflow-hidden border border-border/50"
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-8xl font-display font-bold italic text-primary/10">
-                    {product.name.charAt(0)}
-                  </span>
-                </div>
+                {product.imageUrl ? (
+                  <img
+                    src={product.imageUrl}
+                    alt={product.name}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                ) : (
+                  <>
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-8xl font-display font-bold italic text-primary/10">
+                        {product.name.charAt(0)}
+                      </span>
+                    </div>
+                  </>
+                )}
                 {selectedVariant && (
                   <div className="absolute bottom-4 left-4 flex gap-2">
                     <span className="text-xs font-mono bg-background/90 backdrop-blur px-2 py-1 rounded">

@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Save, Truck, Printer } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, Save, Truck, Printer, StickyNote, Send, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { AdminOrderDetail } from "../../../../../shared/types";
@@ -27,9 +28,30 @@ export default function OrderDetail({ id }: { id: string }) {
   const { hasRole } = useAdminAuth();
   const [trackingCode, setTrackingCode] = useState("");
 
+  const [noteContent, setNoteContent] = useState("");
+
   const { data: order } = useQuery<AdminOrderDetail>({
     queryKey: [`/api/admin/orders/${id}`],
     queryFn: getAdminQueryFn(),
+  });
+
+  interface OrderNote { id: string; authorName: string; content: string; createdAt: string; }
+
+  const { data: notes } = useQuery<OrderNote[]>({
+    queryKey: [`/api/admin/orders/${id}/notes`],
+    queryFn: getAdminQueryFn(),
+  });
+
+  const addNoteMutation = useMutation({
+    mutationFn: async () => {
+      await adminApiRequest("POST", `/api/admin/orders/${id}/notes`, { content: noteContent });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/admin/orders/${id}/notes`] });
+      setNoteContent("");
+      toast.success("Nota adicionada");
+    },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const statusMutation = useMutation({
@@ -159,6 +181,12 @@ export default function OrderDetail({ id }: { id: string }) {
                 <span className="text-muted-foreground">Subtotal</span>
                 <span>R$ {parseFloat(order.subtotal).toFixed(2)}</span>
               </div>
+              {order.discountAmount && parseFloat(order.discountAmount) > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>Desconto {order.couponCode ? `(${order.couponCode})` : ""}</span>
+                  <span>-R$ {parseFloat(order.discountAmount).toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Frete</span>
                 <span>R$ {parseFloat(order.shippingCost).toFixed(2)}</span>
@@ -169,8 +197,8 @@ export default function OrderDetail({ id }: { id: string }) {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Status</span>
-                <Badge variant={order.paymentStatus === "approved" ? "default" : order.paymentStatus === "rejected" ? "destructive" : "outline"}>
-                  {order.paymentStatus}
+                <Badge variant={order.paymentStatus === "approved" ? "default" : order.paymentStatus === "rejected" || order.paymentStatus === "refunded" ? "destructive" : "outline"}>
+                  {order.paymentStatus === "refunded" ? "Reembolsado" : order.paymentStatus}
                 </Badge>
               </div>
               {order.paymentMethod && (
@@ -240,6 +268,68 @@ export default function OrderDetail({ id }: { id: string }) {
               </CardContent>
             </Card>
           )}
+
+          {/* Internal Notes */}
+          <Card className="border-yellow-500/30 bg-yellow-50/50 dark:bg-yellow-900/10">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <StickyNote className="h-4 w-4 text-yellow-600" />
+                Notas Internas
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {/* Add note form */}
+              {canEdit && (
+                <div className="space-y-2">
+                  <Textarea
+                    placeholder="Adicionar nota interna..."
+                    value={noteContent}
+                    onChange={(e) => setNoteContent(e.target.value)}
+                    className="text-sm min-h-[60px] bg-white dark:bg-background"
+                    rows={2}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => addNoteMutation.mutate()}
+                    disabled={!noteContent.trim() || addNoteMutation.isPending}
+                    className="w-full"
+                  >
+                    {addNoteMutation.isPending ? (
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    ) : (
+                      <Send className="h-3 w-3 mr-1" />
+                    )}
+                    Adicionar Nota
+                  </Button>
+                </div>
+              )}
+
+              {/* Notes list */}
+              {notes && notes.length > 0 && (
+                <div className="space-y-2 pt-1">
+                  {notes.map((note) => (
+                    <div key={note.id} className="rounded-md border border-yellow-200 dark:border-yellow-900/30 bg-white dark:bg-background p-3 text-sm">
+                      <p className="whitespace-pre-wrap">{note.content}</p>
+                      <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                        <span className="font-medium">{note.authorName}</span>
+                        <span>
+                          {new Date(note.createdAt).toLocaleDateString("pt-BR", {
+                            day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {(!notes || notes.length === 0) && (
+                <p className="text-xs text-muted-foreground text-center py-2">
+                  Nenhuma nota ainda
+                </p>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

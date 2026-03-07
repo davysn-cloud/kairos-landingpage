@@ -511,12 +511,15 @@ export function Footer() {
           >
             <p>© 2026 Kairós — Casa Criativa. Todos os direitos reservados.</p>
             <div className="flex gap-6 mt-4 md:mt-0">
-              <a href="#" className="hover:text-white transition-colors">
+              <Link href="/grafica/privacidade" className="hover:text-white transition-colors">
                 Política de Privacidade
-              </a>
-              <a href="#" className="hover:text-white transition-colors">
+              </Link>
+              <Link href="/grafica/termos" className="hover:text-white transition-colors">
                 Termos de Uso
-              </a>
+              </Link>
+              <Link href="/grafica/faq" className="hover:text-white transition-colors">
+                FAQ
+              </Link>
             </div>
           </motion.div>
         </div>

@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Category } from "../../../../../shared/schema";
 
@@ -34,6 +34,31 @@ export default function Categories() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<CategoryFormData>(defaultForm);
+  const [uploading, setUploading] = useState(false);
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const token = localStorage.getItem("admin_token");
+      const res = await fetch("/api/admin/upload-image", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (!res.ok) throw new Error((await res.json()).message || "Erro no upload");
+      const { url } = await res.json();
+      setForm((f) => ({ ...f, imageUrl: url }));
+      toast.success("Imagem enviada");
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao enviar imagem");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   const { data: categories } = useQuery<(Category & { productCount: number })[]>({
     queryKey: ["/api/admin/categories"],
@@ -116,8 +141,20 @@ export default function Categories() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>URL da imagem</Label>
-                  <Input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} />
+                  <Label>Imagem</Label>
+                  <div className="flex items-center gap-2">
+                    {form.imageUrl && (
+                      <img src={form.imageUrl} alt="Preview" className="h-12 w-12 object-cover rounded border" />
+                    )}
+                    <label className="cursor-pointer">
+                      <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploading} />
+                      <span className="inline-flex items-center gap-1 rounded-md border px-2 py-1.5 text-xs hover:bg-accent transition-colors">
+                        {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                        {uploading ? "..." : "Upload"}
+                      </span>
+                    </label>
+                  </div>
+                  <Input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} placeholder="Ou cole URL" className="text-xs" />
                 </div>
                 <div className="space-y-2">
                   <Label>Ícone</Label>

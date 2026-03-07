@@ -1,39 +1,91 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { randomUUID } from "crypto";
+import { randomUUID, createHmac, timingSafeEqual } from "crypto";
 import type { CategoryWithCount, CategoryWithProducts, ProductWithDetails } from "../shared/types";
 import {
   validate, addCartItemSchema, updateCartItemSchema,
   checkoutSchema, updateStatusSchema,
   registerSchema, loginSchema,
+  createAddressSchema, updateAddressSchema,
+  updateProfileSchema, changePasswordSchema,
 } from "./middleware/validate";
 import { requireAuth, optionalAuth } from "./middleware/auth";
 import { hashPassword, verifyPassword, generateToken } from "./services/auth";
 import {
   createPreference, getPayment,
   mapPaymentStatus, mapPaymentMethod,
+  createRefund,
 } from "./services/mercadopago";
 import {
   calculateShipping,
   addToMelhorEnvioCart, checkoutShipment, generateLabel, getLabelUrl,
   calculatePackage,
   autoGenerateLabel,
+  getTrackingInfo,
 } from "./services/shipping";
 import { registerAdminRoutes } from "./routes/admin";
+import { authLimiter, checkoutLimiter } from "./middleware/rate-limit";
+import { triggerOrderEmail, sendWelcomeEmail } from "./services/email";
+import { uploadArtFile, uploadProductImage } from "./services/storage-client";
+import multer from "multer";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // ── Health Check ──
+  app.get("/health", (_req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
+  // ── SEO: Sitemap & Robots ──
+
+  const siteUrl = (process.env.SITE_URL || "https://kairos.com.br").trim().replace(/\s+/g, "");
+
+  app.get("/sitemap.xml", async (_req, res) => {
+    const cats = await storage.getCategories();
+    const allProducts: { slug: string; updatedAt?: Date }[] = [];
+    for (const cat of cats) {
+      const prods = await storage.getProductsByCategory(cat.id);
+      for (const p of prods) allProducts.push({ slug: p.slug });
+    }
+
+    const urls = [
+      `<url><loc>${siteUrl}/grafica</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>`,
+      `<url><loc>${siteUrl}/grafica/faq</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>`,
+      `<url><loc>${siteUrl}/grafica/termos</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>`,
+      `<url><loc>${siteUrl}/grafica/privacidade</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>`,
+      ...cats.map((c) => `<url><loc>${siteUrl}/grafica/${c.slug}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>`),
+      ...allProducts.map((p) => `<url><loc>${siteUrl}/grafica/produto/${p.slug}</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>`),
+    ];
+
+    res.header("Content-Type", "application/xml");
+    res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.join("\n")}
+</urlset>`);
+  });
+
+  app.get("/robots.txt", (_req, res) => {
+    res.header("Content-Type", "text/plain");
+    res.send(`User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+
+Sitemap: ${siteUrl}/sitemap.xml
+`);
+  });
+
   // ── Gráfica: Categories ──
 
   app.get("/api/grafica/categories", async (_req, res) => {
     const categories = await storage.getCategories();
     const result: CategoryWithCount[] = await Promise.all(
       categories.map(async (cat) => {
-        const products = await storage.getProductsByCategory(cat.id);
-        return { ...cat, productCount: products.length };
+        const productCount = await storage.getProductCountByCategory(cat.id);
+        return { ...cat, productCount };
       }),
     );
     res.json(result);
@@ -74,9 +126,7 @@ export async function registerRoutes(
       return;
     }
 
-    const category = (await storage.getCategories()).find(
-      (c) => c.id === product.categoryId,
-    );
+    const category = await storage.getCategoryById(product.categoryId);
     if (!category) {
       res.status(404).json({ message: "Categoria do produto não encontrada" });
       return;
@@ -109,6 +159,28 @@ export async function registerRoutes(
     res.json(result);
   });
 
+  // ── Gráfica: Product Search ──
+
+  app.get("/api/grafica/search", async (req, res) => {
+    const q = (req.query.q as string || "").trim();
+    if (q.length < 2) {
+      res.json([]);
+      return;
+    }
+    const products = await storage.searchProducts(q);
+    const enriched = await Promise.all(
+      products.map(async (product) => {
+        const rules = await storage.getPriceRules(product.id);
+        const prices = rules.map((r) => parseFloat(r.pricePerUnit));
+        const priceRange = prices.length > 0
+          ? { min: Math.min(...prices), max: Math.max(...prices) }
+          : { min: parseFloat(product.basePrice), max: parseFloat(product.basePrice) };
+        return { ...product, priceRange };
+      }),
+    );
+    res.json(enriched);
+  });
+
   // ── Gráfica: Paper Types & Finishings ──
 
   app.get("/api/grafica/paper-types", async (_req, res) => {
@@ -125,14 +197,15 @@ export async function registerRoutes(
 
   app.get("/api/grafica/cart/:sessionId", async (req, res) => {
     const items = await storage.getCartItems(req.params.sessionId);
+
+    // Batch-fetch unique products by ID (avoids N+1)
+    const uniqueProductIds = Array.from(new Set(items.map((i) => i.productId)));
+    const productResults = await Promise.all(uniqueProductIds.map((id) => storage.getProductById(id)));
+    const productMap = new Map(productResults.filter(Boolean).map((p) => [p!.id, p!]));
+
     const itemsWithProducts = await Promise.all(
       items.map(async (item) => {
-        const allCategories = await storage.getCategories();
-        const allProductArrays = await Promise.all(
-          allCategories.map((c) => storage.getProductsByCategory(c.id)),
-        );
-        const allProducts = allProductArrays.flat();
-        const product = allProducts.find((p) => p.id === item.productId);
+        const product = productMap.get(item.productId);
         let variant;
         if (product && item.variantId) {
           const variants = await storage.getProductVariants(product.id);
@@ -275,7 +348,7 @@ export async function registerRoutes(
 
   // ── Auth Routes ──
 
-  app.post("/api/grafica/auth/register", validate(registerSchema), async (req, res) => {
+  app.post("/api/grafica/auth/register", authLimiter, validate(registerSchema), async (req, res) => {
     const { name, email, phone, password } = req.body;
 
     const existing = await storage.getCustomerByEmail(email);
@@ -288,13 +361,16 @@ export async function registerRoutes(
     const customer = await storage.createCustomer({ name, email, phone: phone || null, passwordHash });
     const token = generateToken(customer.id);
 
+    // Fire-and-forget welcome email
+    sendWelcomeEmail(email, name).catch(() => {});
+
     res.status(201).json({
       token,
       customer: { id: customer.id, name: customer.name, email: customer.email, phone: customer.phone },
     });
   });
 
-  app.post("/api/grafica/auth/login", validate(loginSchema), async (req, res) => {
+  app.post("/api/grafica/auth/login", authLimiter, validate(loginSchema), async (req, res) => {
     const { email, password } = req.body;
 
     const customer = await storage.getCustomerByEmail(email);
@@ -327,8 +403,8 @@ export async function registerRoutes(
 
   // ── Checkout ──
 
-  app.post("/api/grafica/checkout", requireAuth, validate(checkoutSchema), async (req, res) => {
-    const { sessionId, customerName, customerEmail, customerPhone, address, shippingOption, notes } = req.body;
+  app.post("/api/grafica/checkout", checkoutLimiter, requireAuth, validate(checkoutSchema), async (req, res) => {
+    const { sessionId, customerName, customerEmail, customerPhone, address, shippingOption, notes, couponCode } = req.body;
 
     const cartItemsList = await storage.getCartItems(sessionId);
     if (cartItemsList.length === 0) {
@@ -341,7 +417,32 @@ export async function registerRoutes(
       0,
     );
     const shippingCost = shippingOption?.price || 0;
-    const total = subtotal + shippingCost;
+
+    // Apply coupon discount
+    let discountAmount = 0;
+    let appliedCouponCode: string | null = null;
+    if (couponCode) {
+      const coupon = await storage.getCouponByCode(couponCode);
+      if (coupon && coupon.active) {
+        const now = new Date();
+        const inPeriod = now >= new Date(coupon.validFrom) && now <= new Date(coupon.validTo);
+        const hasUses = coupon.maxUses === null || coupon.currentUses < coupon.maxUses;
+        const meetsMin = subtotal >= parseFloat(coupon.minOrderAmount);
+
+        if (inPeriod && hasUses && meetsMin) {
+          if (coupon.discountType === "percentage") {
+            discountAmount = subtotal * parseFloat(coupon.discountValue) / 100;
+          } else {
+            discountAmount = parseFloat(coupon.discountValue);
+          }
+          discountAmount = Math.min(discountAmount, subtotal);
+          appliedCouponCode = coupon.code;
+          await storage.incrementCouponUses(coupon.id);
+        }
+      }
+    }
+
+    const total = subtotal - discountAmount + shippingCost;
 
     // Store sessionId in notes so webhook can clear cart after payment approval
     const orderNotes = [notes, `__sessionId:${sessionId}`].filter(Boolean).join("\n");
@@ -361,16 +462,17 @@ export async function registerRoutes(
       shippingAddress: address || null,
       shippingServiceId: shippingOption?.melhorEnvioId ?? null,
       shippingLabelUrl: null,
+      couponCode: appliedCouponCode,
+      discountAmount: discountAmount.toFixed(2),
       notes: orderNotes,
     });
 
     console.log(`[Checkout] Order ${order.id} created: shippingAddress=${address ? 'yes' : 'no'}, shippingServiceId=${shippingOption?.melhorEnvioId ?? 'none'}`);
 
-    // Resolve product names
-    const allCats = await storage.getCategories();
-    const allProdArrays = await Promise.all(allCats.map((c) => storage.getProductsByCategory(c.id)));
-    const allProds = allProdArrays.flat();
-    const prodMap = new Map(allProds.map((p) => [p.id, p.name]));
+    // Resolve product names (batch by ID — avoids N+1)
+    const uniqueProductIds = Array.from(new Set(cartItemsList.map((i) => i.productId)));
+    const productResults = await Promise.all(uniqueProductIds.map((id) => storage.getProductById(id)));
+    const prodMap = new Map(productResults.filter(Boolean).map((p) => [p!.id, p!.name]));
 
     const orderItemsData = cartItemsList.map((item) => ({
       orderId: order.id,
@@ -401,6 +503,7 @@ export async function registerRoutes(
         orderId: order.id,
         items: preferenceItems,
         shippingCost,
+        discountAmount,
         payer: {
           name: customerName || "Cliente",
           email: customerEmail || "guest@kairos.com.br",
@@ -434,20 +537,170 @@ export async function registerRoutes(
 
   // ── Upload ──
 
-  app.post("/api/grafica/upload", async (req, res) => {
-    const { orderItemId, fileName } = req.body;
-    const fakeUrl = `/uploads/${Date.now()}-${fileName}`;
+  const ALLOWED_MIMES = [
+    "application/pdf",
+    "image/jpeg", "image/png", "image/tiff",
+    "application/postscript",               // .ai / .eps
+    "application/illustrator",              // .ai
+    "application/eps",                      // .eps
+  ];
+  const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
-    if (orderItemId) {
-      await storage.updateOrderItemArt(orderItemId, fakeUrl, "uploaded");
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: MAX_FILE_SIZE },
+    fileFilter: (_req, file, cb) => {
+      if (ALLOWED_MIMES.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error("Formato não suportado. Envie PDF, JPG, PNG, TIFF, AI ou EPS."));
+      }
+    },
+  });
+
+  app.post("/api/grafica/upload", requireAuth, upload.single("file"), async (req, res) => {
+    const { orderItemId } = req.body;
+
+    if (!req.file) {
+      res.status(400).json({ message: "Nenhum arquivo enviado" });
+      return;
     }
 
+    if (!orderItemId) {
+      res.status(400).json({ message: "orderItemId é obrigatório" });
+      return;
+    }
+
+    const orderItem = await storage.getOrderItemById(orderItemId);
+    if (!orderItem) {
+      res.status(404).json({ message: "Item do pedido não encontrado" });
+      return;
+    }
+
+    try {
+      const url = await uploadArtFile({
+        buffer: req.file.buffer,
+        mimetype: req.file.mimetype,
+        originalname: req.file.originalname,
+        orderId: orderItem.orderId,
+        orderItemId,
+      });
+
+      await storage.updateOrderItemArt(orderItemId, url, "uploaded");
+
+      res.json({
+        uploadUrl: url,
+        fileId: randomUUID(),
+        status: "accepted",
+      });
+    } catch (err: any) {
+      console.error("[Upload] Error:", err?.message || err);
+      res.status(500).json({ message: err?.message || "Erro ao fazer upload do arquivo" });
+    }
+  });
+
+  // ── Coupon Validation ──
+
+  app.post("/api/grafica/coupons/validate", async (req, res) => {
+    const { code, subtotal } = req.body;
+    if (!code || typeof code !== "string") {
+      res.status(400).json({ valid: false, message: "Código do cupom é obrigatório" });
+      return;
+    }
+
+    const coupon = await storage.getCouponByCode(code);
+    if (!coupon || !coupon.active) {
+      res.json({ valid: false, message: "Cupom não encontrado ou inativo" });
+      return;
+    }
+
+    const now = new Date();
+    if (now < new Date(coupon.validFrom) || now > new Date(coupon.validTo)) {
+      res.json({ valid: false, message: "Cupom fora do período de validade" });
+      return;
+    }
+
+    if (coupon.maxUses !== null && coupon.currentUses >= coupon.maxUses) {
+      res.json({ valid: false, message: "Cupom atingiu o limite de usos" });
+      return;
+    }
+
+    const orderSubtotal = parseFloat(subtotal) || 0;
+    if (orderSubtotal < parseFloat(coupon.minOrderAmount)) {
+      res.json({ valid: false, message: `Pedido mínimo de R$ ${parseFloat(coupon.minOrderAmount).toFixed(2)}` });
+      return;
+    }
+
+    let discountAmount = 0;
+    if (coupon.discountType === "percentage") {
+      discountAmount = orderSubtotal * parseFloat(coupon.discountValue) / 100;
+    } else {
+      discountAmount = parseFloat(coupon.discountValue);
+    }
+    // Discount can't exceed subtotal
+    discountAmount = Math.min(discountAmount, orderSubtotal);
+
     res.json({
-      uploadUrl: fakeUrl,
-      fileId: randomUUID(),
-      status: "accepted",
-      validation: { dpiOk: true, dimensionsOk: true, colorSpaceOk: true, messages: [] },
+      valid: true,
+      code: coupon.code,
+      discountType: coupon.discountType,
+      discountValue: coupon.discountValue,
+      discountAmount: parseFloat(discountAmount.toFixed(2)),
+      message: coupon.discountType === "percentage"
+        ? `${parseFloat(coupon.discountValue)}% de desconto aplicado!`
+        : `Desconto de R$ ${parseFloat(coupon.discountValue).toFixed(2)} aplicado!`,
     });
+  });
+
+  // ── Tracking ──
+
+  app.get("/api/grafica/orders/:id/tracking", async (req, res) => {
+    const order = await storage.getOrder(req.params.id as string);
+    if (!order) {
+      res.status(404).json({ message: "Pedido não encontrado" });
+      return;
+    }
+
+    if (!order.shippingTrackingCode) {
+      res.json({ trackingCode: null, events: [] });
+      return;
+    }
+
+    const events = await getTrackingInfo(order.shippingTrackingCode);
+    res.json({ trackingCode: order.shippingTrackingCode, events });
+  });
+
+  // ── Cancel Order (Customer) ──
+
+  app.post("/api/grafica/orders/:id/cancel", requireAuth, async (req, res) => {
+    const order = await storage.getOrder(req.params.id as string);
+    if (!order) {
+      res.status(404).json({ message: "Pedido não encontrado" });
+      return;
+    }
+
+    if (order.customerId !== req.customerId) {
+      res.status(403).json({ message: "Acesso negado" });
+      return;
+    }
+
+    if (!["pending", "confirmed"].includes(order.status)) {
+      res.status(400).json({ message: "Este pedido não pode mais ser cancelado" });
+      return;
+    }
+
+    await storage.updateOrderStatus(order.id, "cancelled");
+
+    // Auto-refund if payment was approved
+    if (order.paymentStatus === "approved" && order.paymentExternalId) {
+      createRefund(order.paymentExternalId)
+        .then(() => storage.updatePaymentStatus(order.id, "refunded"))
+        .catch((err) => console.error(`[Cancel] Refund failed for order ${order.id}:`, err?.message));
+    }
+
+    triggerOrderEmail(order.id, "cancelled").catch(() => {});
+
+    res.json({ message: "Pedido cancelado com sucesso" });
   });
 
   // ── Account (Customer) ──
@@ -455,6 +708,71 @@ export async function registerRoutes(
   app.get("/api/grafica/account/orders", requireAuth, async (req, res) => {
     const orders = await storage.getOrdersByCustomer(req.customerId!);
     res.json(orders);
+  });
+
+  // ── Account: Addresses ──
+
+  app.get("/api/grafica/account/addresses", requireAuth, async (req, res) => {
+    const addresses = await storage.getAddressesByCustomer(req.customerId!);
+    res.json(addresses);
+  });
+
+  app.post("/api/grafica/account/addresses", requireAuth, validate(createAddressSchema), async (req, res) => {
+    const address = await storage.createAddress({
+      ...req.body,
+      customerId: req.customerId!,
+    });
+    res.status(201).json(address);
+  });
+
+  app.patch("/api/grafica/account/addresses/:id", requireAuth, validate(updateAddressSchema), async (req, res) => {
+    const addrId = req.params.id as string;
+    const existing = await storage.getAddress(addrId);
+    if (!existing || existing.customerId !== req.customerId!) {
+      res.status(404).json({ message: "Endereço não encontrado" });
+      return;
+    }
+    const updated = await storage.updateAddress(addrId, req.body);
+    res.json(updated);
+  });
+
+  app.delete("/api/grafica/account/addresses/:id", requireAuth, async (req, res) => {
+    const addrId = req.params.id as string;
+    const existing = await storage.getAddress(addrId);
+    if (!existing || existing.customerId !== req.customerId!) {
+      res.status(404).json({ message: "Endereço não encontrado" });
+      return;
+    }
+    await storage.deleteAddress(addrId);
+    res.status(204).send();
+  });
+
+  // ── Account: Profile ──
+
+  app.patch("/api/grafica/account/profile", requireAuth, validate(updateProfileSchema), async (req, res) => {
+    const updated = await storage.updateCustomer(req.customerId!, req.body);
+    if (!updated) {
+      res.status(404).json({ message: "Cliente não encontrado" });
+      return;
+    }
+    res.json({ id: updated.id, name: updated.name, email: updated.email, phone: updated.phone });
+  });
+
+  app.post("/api/grafica/account/change-password", requireAuth, validate(changePasswordSchema), async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    const customer = await storage.getCustomer(req.customerId!);
+    if (!customer) {
+      res.status(404).json({ message: "Cliente não encontrado" });
+      return;
+    }
+    const valid = await verifyPassword(currentPassword, customer.passwordHash);
+    if (!valid) {
+      res.status(400).json({ message: "Senha atual incorreta" });
+      return;
+    }
+    const newHash = await hashPassword(newPassword);
+    await storage.updateCustomer(req.customerId!, { passwordHash: newHash });
+    res.json({ message: "Senha alterada com sucesso" });
   });
 
   // ── Admin Routes (protected, in separate file) ──
@@ -467,6 +785,53 @@ export async function registerRoutes(
 
   app.post("/api/webhooks/mercadopago", async (req, res) => {
     try {
+      // ── Webhook signature validation ──
+      const webhookSecret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
+      if (webhookSecret) {
+        const xSignature = req.headers["x-signature"] as string | undefined;
+        const xRequestId = req.headers["x-request-id"] as string | undefined;
+        const dataId = req.query["data.id"] || req.body?.data?.id || "";
+
+        if (!xSignature) {
+          console.warn("[Webhook] Missing x-signature header");
+          res.status(401).json({ message: "Assinatura ausente" });
+          return;
+        }
+
+        const parts = Object.fromEntries(
+          xSignature.split(",").map((p) => {
+            const [k, ...v] = p.split("=");
+            return [k.trim(), v.join("=")];
+          }),
+        );
+        const ts = parts["ts"];
+        const v1 = parts["v1"];
+
+        if (!ts || !v1) {
+          console.warn("[Webhook] Invalid x-signature format");
+          res.status(401).json({ message: "Formato de assinatura inválido" });
+          return;
+        }
+
+        const template = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
+        const computed = createHmac("sha256", webhookSecret).update(template).digest("hex");
+
+        try {
+          const valid = timingSafeEqual(Buffer.from(computed), Buffer.from(v1));
+          if (!valid) {
+            console.warn("[Webhook] Signature mismatch");
+            res.status(401).json({ message: "Assinatura inválida" });
+            return;
+          }
+        } catch {
+          console.warn("[Webhook] Signature comparison failed");
+          res.status(401).json({ message: "Assinatura inválida" });
+          return;
+        }
+      } else {
+        console.warn("[Webhook] MERCADOPAGO_WEBHOOK_SECRET not set — skipping signature validation");
+      }
+
       const { type, data } = req.body;
 
       // Only process payment notifications
@@ -520,6 +885,8 @@ export async function registerRoutes(
         if (paymentStatus === "approved") {
           autoGenerateLabel(orderId).catch(() => {});
         }
+
+        triggerOrderEmail(orderId, orderStatus).catch(() => {});
       }
 
       res.status(200).json({ received: true, processed: true });
@@ -615,6 +982,8 @@ export async function registerRoutes(
         if (paymentStatus === "approved") {
           autoGenerateLabel(orderId).catch(() => {});
         }
+
+        triggerOrderEmail(orderId, orderStatus).catch(() => {});
       }
 
       res.json({

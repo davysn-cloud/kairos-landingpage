@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
 import { GraficaNavbar } from "@/components/grafica/grafica-navbar";
 import { ProductCard } from "@/components/grafica/product-card";
@@ -39,6 +40,14 @@ export default function GraficaCategoria({ slug }: GraficaCategoriaProps) {
 
   return (
     <div className="min-h-screen bg-background font-sans">
+      {category && (
+        <Helmet>
+          <title>{category.name} | Kairós Gráfica</title>
+          <meta name="description" content={category.description || `${category.name} — Impressos de alta qualidade na Gráfica Kairós`} />
+          <meta property="og:title" content={`${category.name} | Kairós Gráfica`} />
+          <meta property="og:description" content={category.description || `${category.name} — Gráfica Kairós`} />
+        </Helmet>
+      )}
       <GraficaNavbar
         breadcrumbs={
           category ? [{ label: category.name }] : []
@@ -55,34 +64,46 @@ export default function GraficaCategoria({ slug }: GraficaCategoriaProps) {
               <Skeleton className="h-5 w-96" />
             </div>
           ) : category ? (
-            <div className="max-w-3xl">
-              <motion.span
-                initial={{ x: -20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ duration: 0.6, ease: EASE }}
-                className="text-primary font-mono text-xs uppercase tracking-[0.3em] block mb-4"
-              >
-                Gráfica Kairós
-              </motion.span>
-
-              <motion.h1
-                initial={{ y: 30, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.8, delay: 0.1, ease: EASE }}
-                className="text-3xl md:text-5xl font-display font-bold tracking-tight"
-              >
-                {category.name}
-              </motion.h1>
-
-              {category.description && (
-                <motion.p
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.7, delay: 0.2, ease: EASE }}
-                  className="text-lg text-muted-foreground mt-4 font-display"
+            <div className="flex flex-col md:flex-row gap-8 items-start">
+              <div className="max-w-3xl flex-1">
+                <motion.span
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ duration: 0.6, ease: EASE }}
+                  className="text-primary font-mono text-xs uppercase tracking-[0.3em] block mb-4"
                 >
-                  {category.description}
-                </motion.p>
+                  Gráfica Kairós
+                </motion.span>
+
+                <motion.h1
+                  initial={{ y: 30, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.8, delay: 0.1, ease: EASE }}
+                  className="text-3xl md:text-5xl font-display font-bold tracking-tight"
+                >
+                  {category.name}
+                </motion.h1>
+
+                {category.description && (
+                  <motion.p
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ duration: 0.7, delay: 0.2, ease: EASE }}
+                    className="text-lg text-muted-foreground mt-4 font-display"
+                  >
+                    {category.description}
+                  </motion.p>
+                )}
+              </div>
+              {category.imageUrl && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.7, delay: 0.2, ease: EASE }}
+                  className="w-full md:w-48 h-32 md:h-32 rounded-xl overflow-hidden border border-border/50 flex-shrink-0"
+                >
+                  <img src={category.imageUrl} alt={category.name} className="w-full h-full object-cover" />
+                </motion.div>
               )}
             </div>
           ) : error ? (

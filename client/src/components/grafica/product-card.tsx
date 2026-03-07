@@ -30,12 +30,23 @@ export function ProductCard({ product, index }: ProductCardProps) {
       <div className="group relative overflow-hidden rounded-xl border border-border/50 bg-card hover:border-primary/30 transition-all duration-500">
         {/* Image area */}
         <div className="aspect-[4/3] bg-muted/30 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-5xl font-display font-bold italic text-primary/10 group-hover:text-primary/20 transition-colors duration-500">
-              {product.name.charAt(0)}
-            </span>
-          </div>
+          {product.imageUrl ? (
+            <img
+              src={product.imageUrl}
+              alt={product.name}
+              loading="lazy"
+              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          ) : (
+            <>
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-5xl font-display font-bold italic text-primary/10 group-hover:text-primary/20 transition-colors duration-500">
+                  {product.name.charAt(0)}
+                </span>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Content */}
