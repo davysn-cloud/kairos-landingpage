@@ -91,7 +91,7 @@ const createPaperTypeSchema = z.object({
   name: z.string().min(1),
   weightGsm: z.number().int().positive(),
   finish: z.string().min(1),
-  costPerSheet: z.string().regex(/^\d+(\.\d{1,4})?$/),
+  costPerSheet: z.string().transform((v) => v.replace(",", ".")).pipe(z.string().regex(/^\d+(\.\d{1,4})?$/)),
   active: z.boolean().default(true),
   sortOrder: z.number().int().default(0),
 });

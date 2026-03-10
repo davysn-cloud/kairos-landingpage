@@ -142,7 +142,7 @@ export default function ProductEditor({ id }: { id?: string }) {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const token = localStorage.getItem("admin_token");
+      const token = localStorage.getItem("kairos_admin_token");
       const res = await fetch("/api/admin/upload-image", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
@@ -303,10 +303,10 @@ export default function ProductEditor({ id }: { id?: string }) {
                         </Select>
                       </TableCell>
                       <TableCell>
-                        <Select value={newVariant.finishingId} onValueChange={(v) => setNewVariant({ ...newVariant, finishingId: v })}>
+                        <Select value={newVariant.finishingId || "__none__"} onValueChange={(v) => setNewVariant({ ...newVariant, finishingId: v === "__none__" ? "" : v })}>
                           <SelectTrigger className="w-[140px]"><SelectValue placeholder="Acabamento" /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">Nenhum</SelectItem>
+                            <SelectItem value="__none__">Nenhum</SelectItem>
                             {(finishingsList || []).map((f) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
                           </SelectContent>
                         </Select>

@@ -197,7 +197,7 @@ export default function GraficaPedido({ id }: GraficaPedidoProps) {
 
     setUploadingItem(orderItemId);
     try {
-      const token = localStorage.getItem("grafica_token");
+      const token = localStorage.getItem("kairos_auth_token");
       const formData = new FormData();
       formData.append("file", file);
       formData.append("orderItemId", orderItemId);
@@ -226,7 +226,7 @@ export default function GraficaPedido({ id }: GraficaPedidoProps) {
   // Cancel order
   const cancelMutation = useMutation({
     mutationFn: async () => {
-      const token = localStorage.getItem("grafica_token");
+      const token = localStorage.getItem("kairos_auth_token");
       const res = await fetch(`/api/grafica/orders/${id}/cancel`, {
         method: "POST",
         headers: {
@@ -255,8 +255,8 @@ export default function GraficaPedido({ id }: GraficaPedidoProps) {
     if (!order) return;
     setReordering(true);
     try {
-      const sessionId = localStorage.getItem("cart_session_id") || crypto.randomUUID();
-      localStorage.setItem("cart_session_id", sessionId);
+      const sessionId = localStorage.getItem("kairos_cart_session") || crypto.randomUUID();
+      localStorage.setItem("kairos_cart_session", sessionId);
 
       for (const item of order.items) {
         await fetch("/api/grafica/cart", {

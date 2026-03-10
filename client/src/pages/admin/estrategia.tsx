@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, Megaphone } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { getAdminQueryFn, adminApiRequest } from "@/lib/admin-api";
 
 interface Plan {
   id: string;
@@ -78,10 +78,12 @@ export default function EstrategiaAdmin() {
   // ── Queries ──
   const { data: plans = [], isLoading: loadingPlans } = useQuery<Plan[]>({
     queryKey: ["/api/admin/estrategia/plans"],
+    queryFn: getAdminQueryFn(),
   });
 
   const { data: steps = [], isLoading: loadingSteps } = useQuery<Step[]>({
     queryKey: ["/api/admin/estrategia/steps"],
+    queryFn: getAdminQueryFn(),
   });
 
   // ── Plan Mutations ──
@@ -92,7 +94,7 @@ export default function EstrategiaAdmin() {
         features: data.features.split("\n").map((f) => f.trim()).filter(Boolean),
         sortOrder: parseInt(data.sortOrder) || 0,
       };
-      const res = await apiRequest("POST", "/api/admin/estrategia/plans", body);
+      const res = await adminApiRequest("POST", "/api/admin/estrategia/plans", body);
       return res.json();
     },
     onSuccess: () => {
@@ -109,7 +111,7 @@ export default function EstrategiaAdmin() {
         features: data.features.split("\n").map((f) => f.trim()).filter(Boolean),
         sortOrder: parseInt(data.sortOrder) || 0,
       };
-      const res = await apiRequest("PATCH", `/api/admin/estrategia/plans/${id}`, body);
+      const res = await adminApiRequest("PATCH", `/api/admin/estrategia/plans/${id}`, body);
       return res.json();
     },
     onSuccess: () => {
@@ -122,7 +124,7 @@ export default function EstrategiaAdmin() {
 
   const deletePlan = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/admin/estrategia/plans/${id}`);
+      await adminApiRequest("DELETE", `/api/admin/estrategia/plans/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/estrategia/plans"] });
@@ -133,7 +135,7 @@ export default function EstrategiaAdmin() {
   const createStep = useMutation({
     mutationFn: async (data: StepForm) => {
       const body = { ...data, sortOrder: parseInt(data.sortOrder) || 0 };
-      const res = await apiRequest("POST", "/api/admin/estrategia/steps", body);
+      const res = await adminApiRequest("POST", "/api/admin/estrategia/steps", body);
       return res.json();
     },
     onSuccess: () => {
@@ -146,7 +148,7 @@ export default function EstrategiaAdmin() {
   const updateStep = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: StepForm }) => {
       const body = { ...data, sortOrder: parseInt(data.sortOrder) || 0 };
-      const res = await apiRequest("PATCH", `/api/admin/estrategia/steps/${id}`, body);
+      const res = await adminApiRequest("PATCH", `/api/admin/estrategia/steps/${id}`, body);
       return res.json();
     },
     onSuccess: () => {
@@ -159,7 +161,7 @@ export default function EstrategiaAdmin() {
 
   const deleteStep = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/admin/estrategia/steps/${id}`);
+      await adminApiRequest("DELETE", `/api/admin/estrategia/steps/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/estrategia/steps"] });

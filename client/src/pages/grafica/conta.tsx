@@ -202,8 +202,8 @@ export default function GraficaConta() {
       const items = orderData.items || [];
       if (items.length === 0) return;
 
-      const sessionId = localStorage.getItem("cart_session_id") || crypto.randomUUID();
-      localStorage.setItem("cart_session_id", sessionId);
+      const sessionId = localStorage.getItem("kairos_cart_session") || crypto.randomUUID();
+      localStorage.setItem("kairos_cart_session", sessionId);
 
       for (const item of items) {
         await fetch("/api/grafica/cart", {

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, Ticket } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { getAdminQueryFn, adminApiRequest } from "@/lib/admin-api";
 
 interface Coupon {
   id: string;
@@ -47,6 +47,7 @@ export default function CouponsPage() {
 
   const { data: coupons = [], isLoading } = useQuery<Coupon[]>({
     queryKey: ["/api/admin/coupons"],
+    queryFn: getAdminQueryFn(),
   });
 
   const createMutation = useMutation({
@@ -55,7 +56,7 @@ export default function CouponsPage() {
         ...data,
         maxUses: data.maxUses ? parseInt(data.maxUses) : null,
       };
-      const res = await apiRequest("POST", "/api/admin/coupons", body);
+      const res = await adminApiRequest("POST", "/api/admin/coupons", body);
       return res.json();
     },
     onSuccess: () => {
@@ -71,7 +72,7 @@ export default function CouponsPage() {
         ...data,
         maxUses: data.maxUses ? parseInt(data.maxUses) : null,
       };
-      const res = await apiRequest("PATCH", `/api/admin/coupons/${id}`, body);
+      const res = await adminApiRequest("PATCH", `/api/admin/coupons/${id}`, body);
       return res.json();
     },
     onSuccess: () => {
@@ -84,7 +85,7 @@ export default function CouponsPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/admin/coupons/${id}`);
+      await adminApiRequest("DELETE", `/api/admin/coupons/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/coupons"] });

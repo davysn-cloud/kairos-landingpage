@@ -31,10 +31,12 @@ export default function PaperTypes() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      // Normaliza costPerSheet: troca vírgula por ponto (formato brasileiro)
+      const payload = { ...form, costPerSheet: form.costPerSheet.replace(",", ".") };
       if (editId) {
-        await adminApiRequest("PATCH", `/api/admin/paper-types/${editId}`, form);
+        await adminApiRequest("PATCH", `/api/admin/paper-types/${editId}`, payload);
       } else {
-        await adminApiRequest("POST", "/api/admin/paper-types", form);
+        await adminApiRequest("POST", "/api/admin/paper-types", payload);
       }
     },
     onSuccess: () => {
@@ -42,7 +44,19 @@ export default function PaperTypes() {
       setOpen(false); setEditId(null); setForm(defaultForm);
       toast.success(editId ? "Atualizado" : "Criado");
     },
-    onError: (err: Error) => toast.error(err.message),
+    onError: (err: Error) => {
+      try {
+        const json = JSON.parse(err.message.replace(/^\d+:\s*/, ""));
+        if (json.errors) {
+          const msgs = Object.entries(json.errors).map(([k, v]) => `${k}: ${(v as string[]).join(", ")}`);
+          toast.error(msgs.join("\n") || json.message || "Erro ao salvar");
+        } else {
+          toast.error(json.message || "Erro ao salvar");
+        }
+      } catch {
+        toast.error(err.message || "Erro ao salvar");
+      }
+    },
   });
 
   const deleteMutation = useMutation({
@@ -69,7 +83,7 @@ export default function PaperTypes() {
             <form onSubmit={(e) => { e.preventDefault(); saveMutation.mutate(); }} className="space-y-4">
               <div className="space-y-2"><Label>Nome</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label>Gramatura (gsm)</Label><Input type="number" value={form.weightGsm} onChange={(e) => setForm({ ...form, weightGsm: parseInt(e.target.value) || 0 })} /></div>
+                <div className="space-y-2"><Label>Gramatura (gsm)</Label><Input type="number" min={1} value={form.weightGsm} onChange={(e) => setForm({ ...form, weightGsm: parseInt(e.target.value) || 0 })} /></div>
                 <div className="space-y-2">
                   <Label>Acabamento</Label>
                   <Select value={form.finish} onValueChange={(v) => setForm({ ...form, finish: v })}>

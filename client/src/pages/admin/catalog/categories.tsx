@@ -43,7 +43,7 @@ export default function Categories() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const token = localStorage.getItem("admin_token");
+      const token = localStorage.getItem("kairos_admin_token");
       const res = await fetch("/api/admin/upload-image", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
