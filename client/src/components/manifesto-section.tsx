@@ -108,11 +108,11 @@ export function ManifestoSection() {
                 }}
               >
                 {isItalic ? (
-                  <p className="text-lg md:text-3xl leading-relaxed font-display text-white/70 whitespace-pre-line">
+                  <p className="text-lg md:text-3xl leading-relaxed font-sans italic text-white/70 whitespace-pre-line">
                     {line}
                   </p>
                 ) : (
-                  <p className="text-base md:text-xl leading-relaxed text-white/50">
+                  <p className="text-base md:text-xl leading-relaxed font-sans text-white/50">
                     {line}
                   </p>
                 )}

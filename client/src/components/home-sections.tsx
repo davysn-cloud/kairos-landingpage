@@ -107,9 +107,9 @@ export function Hero() {
         {/* Unicorn Studio WebGL scene — initialized via data-attributes */}
         <div
           data-us-project-src="/unicorn-scene.json"
-          data-us-scale="0.5"
-          data-us-dpi="1"
-          data-us-fps="30"
+          data-us-scale="0.75"
+          data-us-dpi="1.25"
+          data-us-fps="24"
           style={{ width: "100%", height: "100%" }}
         ></div>
       </div>
@@ -182,7 +182,7 @@ export function PurposeBlock() {
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.8, delay: 0.75, ease: EASE }}
-              className="relative p-10 md:p-16 text-lg md:text-xl leading-relaxed text-white/80 font-display"
+              className="relative p-10 md:p-16 text-lg md:text-xl leading-relaxed text-white/80 font-sans"
             >
               "Manifestar a Cultura do Reino na Terra através da criatividade,
               fazendo com que cada obra visual, escrita, sonora ou material não

@@ -103,7 +103,7 @@ export default function Home() {
                   whileInView={{ y: 0, opacity: 1 }}
                   viewport={{ once: true }}
                   transition={{ duration: 1.0, delay: 0.3, ease: EASE }}
-                  className="text-xl md:text-2xl font-display font-medium leading-relaxed text-white/80 gsap-parallax"
+                  className="text-xl md:text-2xl font-sans font-medium leading-relaxed text-white/80 gsap-parallax"
                   style={{ mixBlendMode: "difference" }}
                 >
                   Unimos moda, editorial, produção cultural, audiovisual e
@@ -137,7 +137,7 @@ export default function Home() {
                     Missão
                   </motion.span>
                 </div>
-                <p className="text-xl md:text-2xl font-display leading-relaxed">
+                <p className="text-xl md:text-2xl font-sans leading-relaxed">
                   Dar forma ao que o céu comunica, transformando fé em expressão
                   cultural por meio de marcas, livros, artistas, produtos,
                   roupas e projetos audiovisuais que ecoam a Cultura do Reino.
@@ -172,7 +172,7 @@ export default function Home() {
                     Visão
                   </motion.span>
                 </div>
-                <p className="text-xl md:text-2xl font-display leading-relaxed">
+                <p className="text-xl md:text-2xl font-sans leading-relaxed">
                   Ser a principal referência criativa do mercado cristão,
                   influenciando a cultura através de beleza, excelência e
                   propósito; consolidando artistas, autores e empreendedores que
