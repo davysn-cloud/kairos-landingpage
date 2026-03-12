@@ -75,7 +75,13 @@ export function Hero() {
         fps: 60,
         scale: 1,
         dpi: 1.5,
-        production: true,
+        production: false,
+        interactivity: {
+          mouse: {
+            disableMobile: false,
+            disabled: false,
+          },
+        },
       })
         .then((scene) => {
           if (destroyed) {
@@ -118,7 +124,7 @@ export function Hero() {
         style={{ top: 0, right: 0, bottom: 0, left: 0, borderRadius: 0 }}
       >
         {/* Unicorn Studio WebGL scene */}
-        <div id="unicorn-hero" className="absolute inset-0 w-full h-full" />
+        <div id="unicorn-hero" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}></div>
       </div>
     </div>
   );
