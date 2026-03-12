@@ -27,10 +27,9 @@ export default function Home() {
     audio.play().catch(() => {});
 
     const unmute = () => {
-      if (audio.muted) {
-        audio.muted = false;
-        setMuted(false);
-      }
+      audio.muted = false;
+      setMuted(false);
+      if (audio.paused) audio.play().catch(() => {});
       document.removeEventListener("click", unmute);
       document.removeEventListener("scroll", unmute);
       document.removeEventListener("keydown", unmute);
