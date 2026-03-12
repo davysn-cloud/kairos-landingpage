@@ -8,15 +8,8 @@ gsap.registerPlugin(ScrollTrigger);
 declare global {
   interface Window {
     UnicornStudio?: {
-      addScene: (config: {
-        elementId: string;
-        filePath?: string;
-        fps?: number;
-        scale?: number;
-        dpi?: number;
-        lazyLoad?: boolean;
-        production?: boolean;
-      }) => Promise<{ destroy: () => void; resize: () => void; paused: boolean }>;
+      init: () => Promise<unknown[]>;
+      destroy: () => void;
     };
   }
 }
@@ -24,7 +17,6 @@ declare global {
 export function Hero() {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
-  const sceneRef = useRef<{ destroy: () => void } | null>(null);
 
   useEffect(() => {
     const wrapper = wrapperRef.current;
@@ -63,56 +55,43 @@ export function Hero() {
     };
   }, []);
 
-  // Initialize Unicorn Studio scene
+  // Initialize Unicorn Studio scene via data-attributes + init()
   useEffect(() => {
-    let destroyed = false;
+    let cleaned = false;
+
+    const isReady = () =>
+      window.UnicornStudio && typeof window.UnicornStudio.init === "function";
 
     const initScene = () => {
-      if (destroyed || !window.UnicornStudio) return;
-      window.UnicornStudio.addScene({
-        elementId: "unicorn-hero",
-        filePath: "/unicorn-scene.json",
-        fps: 60,
-        scale: 1,
-        dpi: 1.5,
-        production: false,
-        interactivity: {
-          mouse: {
-            disableMobile: false,
-            disabled: false,
-          },
-        },
-      })
-        .then((scene) => {
-          if (destroyed) {
-            scene.destroy();
-          } else {
-            sceneRef.current = scene;
-          }
-        })
-        .catch((err) => console.error("Unicorn Studio error:", err));
+      if (cleaned || !isReady()) return;
+      window.UnicornStudio!.init().catch((err: unknown) =>
+        console.error("Unicorn Studio init error:", err)
+      );
     };
 
-    // Wait for the script to load
-    if (window.UnicornStudio) {
+    if (isReady()) {
       initScene();
     } else {
+      // defer script hasn't loaded yet — poll until it does
       const check = setInterval(() => {
-        if (window.UnicornStudio) {
+        if (isReady()) {
           clearInterval(check);
           initScene();
         }
-      }, 100);
-      // Stop checking after 10s
-      setTimeout(() => clearInterval(check), 10000);
+      }, 150);
+      const timeout = setTimeout(() => clearInterval(check), 15000);
+      return () => {
+        cleaned = true;
+        clearInterval(check);
+        clearTimeout(timeout);
+      };
     }
 
     return () => {
-      destroyed = true;
-      if (sceneRef.current) {
-        sceneRef.current.destroy();
-        sceneRef.current = null;
-      }
+      cleaned = true;
+      try {
+        if (isReady()) window.UnicornStudio!.destroy();
+      } catch { /* ignore */ }
     };
   }, []);
 
@@ -120,11 +99,17 @@ export function Hero() {
     <div ref={wrapperRef} className="relative h-screen w-full bg-background md:h-screen" style={{ minHeight: "100svh" }}>
       <div
         ref={innerRef}
-        className="absolute overflow-hidden will-change-transform"
+        className="absolute overflow-hidden will-change-transform bg-[#d0d0d0]"
         style={{ top: 0, right: 0, bottom: 0, left: 0, borderRadius: 0 }}
       >
-        {/* Unicorn Studio WebGL scene */}
-        <div id="unicorn-hero" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}></div>
+        {/* Unicorn Studio WebGL scene — initialized via data-attributes */}
+        <div
+          data-us-project-src="/unicorn-scene.json"
+          data-us-scale="1"
+          data-us-dpi="1.5"
+          data-us-fps="60"
+          style={{ width: "100%", height: "100%" }}
+        ></div>
       </div>
     </div>
   );
