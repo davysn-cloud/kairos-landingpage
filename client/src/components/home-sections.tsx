@@ -107,9 +107,9 @@ export function Hero() {
         {/* Unicorn Studio WebGL scene — initialized via data-attributes */}
         <div
           data-us-project-src="/unicorn-scene.json"
-          data-us-scale="1"
-          data-us-dpi="1.5"
-          data-us-fps="60"
+          data-us-scale="0.5"
+          data-us-dpi="1"
+          data-us-fps="30"
           style={{ width: "100%", height: "100%" }}
         ></div>
       </div>
