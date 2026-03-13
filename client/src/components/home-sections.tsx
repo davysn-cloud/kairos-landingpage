@@ -109,7 +109,7 @@ export function Hero() {
           data-us-project-src="/unicorn-scene.json"
           data-us-scale="0.75"
           data-us-dpi="1.25"
-          data-us-fps="24"
+          data-us-fps="30"
           style={{ width: "100%", height: "100%" }}
         ></div>
       </div>
